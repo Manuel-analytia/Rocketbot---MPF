@@ -10,7 +10,8 @@
       "WebFetch(domain:newsletter.robotipy.com)",
       "WebFetch(domain:academy.rocketbot.com)",
       "WebFetch(domain:docs.rocketbot.com)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(grep -iE \"python|\\\\.exe$\")"
     ]
   }
 }
