@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3 *)",
+      "Bash(python *)",
+      "WebSearch",
+      "WebFetch(domain:blog.robotipy.com)",
+      "WebFetch(domain:forum.rocketbot.co)",
+      "WebFetch(domain:docs.rocketbot.co)",
+      "WebFetch(domain:newsletter.robotipy.com)",
+      "WebFetch(domain:academy.rocketbot.com)",
+      "WebFetch(domain:docs.rocketbot.com)",
+      "Bash(git *)"
+    ]
+  }
+}
