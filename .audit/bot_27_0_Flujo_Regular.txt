@@ -1,231 +1,93 @@
-# BOT id=27 name=0_Flujo_Regular
-# declared vars (19): v_h1_detalle, v_h1_estado, v_orq_duracion, v_orq_estado_0_1, v_orq_estado_1, v_orq_estado_2, v_orq_estado_3, v_orq_estado_4, v_orq_estado_general, v_orq_fin, v_orq_hay_data, v_orq_inicio, v_orq_log_path, v_orq_nombre, v_precheck_detalle, v_precheck_estado, v_ruta_excel, v_ruta_log_actual, v_total_filas
-# top-level commands: 20
+=== BOT 27: 0_Flujo_Regular ===
+Total CMDs: 21
+Total Vars: 20
 
-CMD00 father=execScriptPython desc='Inicializar timestamp del orquestador'
-   meta: {'run_when': 'True'}
-   command:
-     from datetime import datetime
-     inicio = datetime.now()
-     SetVar("v_orq_inicio", inicio.strftime("%Y-%m-%d %H:%M:%S"))
-     SetVar("v_orq_hay_data", "0")
+--- VARIABLES (project.vars) ---
+  v_root_onedrive = "C:\Users\manue\OneDrive - mpf.com.pe"
+  v_orq_nombre = "0_Flujo_Regular"
+  v_orq_estado_general = "PENDIENTE"
+  v_orq_estado_0_1 = "PENDIENTE"
+  v_orq_estado_1 = "PENDIENTE"
+  v_orq_estado_2 = "PENDIENTE"
+  v_orq_estado_3 = "PENDIENTE"
+  v_orq_estado_4 = "PENDIENTE"
+  v_orq_hay_data = ""
+  v_orq_inicio = ""
+  v_orq_fin = ""
+  v_orq_duracion = ""
+  v_orq_log_path = ""
+  v_precheck_estado = "PENDIENTE"
+  v_precheck_detalle = ""
+  v_ruta_log_actual = ""
+  v_h1_estado = ""
+  v_h1_detalle = ""
+  v_ruta_excel = ""
+  v_total_filas = ""
 
-CMD01 father=setVar var=v_orq_estado_general desc='Estado inicial del orquestador'
-   meta: {'run_when': 'True'}
-   command:
-     "EN_PRECHECK"
-
-CMD02 father=execRocketBotDB desc='Ejecutar verificación de condiciones preliminares'
-   meta: {'run_when': 'True'}
-   command:
-     0_1_Verificacion_Condiciones
-
-CMD03 father=setVar var=v_orq_estado_0_1 desc='Estado del precheck'
-   meta: {'run_when': 'True'}
-   command:
-     GetVar("v_precheck_estado")
-
-CMD04 father=setVar var=v_orq_log_path desc='Reusar log central del precheck'
-   meta: {'run_when': 'True'}
-   command:
-     GetVar("v_ruta_log_actual")
-
-CMD05 father=execScriptPython desc='Registrar resultado del precheck'
-   meta: {'run_when': 'GetVar("v_orq_log_path") != ""'}
-   command:
-     from datetime import datetime
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|Precheck {GetVar('v_precheck_estado')} | {GetVar('v_precheck_detalle')}\n")
-
-CMD06 father=setVar var=v_orq_estado_general desc='Continuar flujo solo si el precheck está OK'
-   meta: {'run_when': 'GetVar("v_precheck_estado") == "OK"'}
-   command:
-     "EN_PROCESO"
-
-CMD07 father=execRocketBotDB desc='Creación de las carpetas dentro del periodo'
-   meta: {'run_when': 'GetVar("v_precheck_estado") == "OK"'}
-   command:
-     1_Crear_Carpetas
-
-CMD08 father=setVar var=v_orq_estado_1 desc='Estado robot hijo 1'
-   meta: {'run_when': 'GetVar("v_precheck_estado") == "OK"'}
-   command:
-     "EJECUTADO"
-
-CMD09 father=execScriptPython desc='Registrar resultado del hijo 1'
-   meta: {'run_when': 'GetVar("v_precheck_estado") == "OK" and GetVar("v_orq_log_path") != ""'}
-   command:
-     from datetime import datetime
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         detalle = GetVar("v_h1_detalle") if GetVar("v_h1_detalle") else "Sin detalle"
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|1_Crear_Carpetas {GetVar('v_orq_estado_1')} | {detalle}\n")
-
-CMD10 father=execRocketBotDB desc='Revisión de los embarques'
-   meta: {'run_when': 'GetVar("v_precheck_estado") == "OK"'}
-   command:
-     2_Embarques
-
-CMD11 father=evaluateIf desc='Continuar solo si hay archivo y filas para procesar'
-   meta: {'run_when': 'GetVar("v_precheck_estado") == "OK"'}
-   command:
-     GetVar("v_precheck_estado") == "OK" and GetVar("v_ruta_excel") != "" and "{v_total_filas}" != "" and int({v_total_filas}) > 0
-   CHILDREN (10):
-CMD11.c00 father=setVar var=v_orq_estado_2 desc='Estado robot hijo 2 con data válida'
-   meta: {'run_when': 'True'}
-   command:
-     "OK"
-
-CMD11.c01 father=setVar var=v_orq_hay_data desc='Bandera de data disponible'
-   meta: {'run_when': 'True'}
-   command:
-     "1"
-
-CMD11.c02 father=execScriptPython desc='Registrar resultado del hijo 2 con data'
-   meta: {'run_when': 'True'}
-   command:
-     from datetime import datetime
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         detalle = f"archivo={GetVar('v_ruta_excel')} | filas={GetVar('v_total_filas')}"
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|2_Embarques {GetVar('v_orq_estado_2')} | {detalle}\n")
-
-CMD11.c03 father=execRocketBotDB desc='Lectura de archivos COAs e informes'
-   meta: {'run_when': 'True'}
-   command:
-     3_Lectura_de_COAS_e_Informe
-
-CMD11.c04 father=setVar var=v_orq_estado_3 desc='Estado robot hijo 3'
-   meta: {'run_when': 'True'}
-   command:
-     "EJECUTADO"
-
-CMD11.c05 father=execScriptPython desc='Registrar resultado del hijo 3'
-   meta: {'run_when': 'True'}
-   command:
-     from datetime import datetime
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|3_Lectura_de_COAS_e_Informe {GetVar('v_orq_estado_3')}\n")
-
-CMD11.c06 father=execRocketBotDB desc='Envío de correos de Invoice'
-   meta: {'run_when': 'True'}
-   command:
-     4_Envio_Invoice
-
-CMD11.c07 father=setVar var=v_orq_estado_4 desc='Estado robot hijo 4'
-   meta: {'run_when': 'True'}
-   command:
-     "EJECUTADO"
-
-CMD11.c08 father=setVar var=v_orq_estado_general desc='Cierre general con data'
-   meta: {'run_when': 'True'}
-   command:
-     "FINALIZADO"
-
-CMD11.c09 father=execScriptPython desc='Registrar resultado del hijo 4'
-   meta: {'run_when': 'True'}
-   command:
-     from datetime import datetime
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|4_Envio_Invoice {GetVar('v_orq_estado_4')}\n")
-
-   ELSE (5):
-CMD11.e00 father=setVar var=v_orq_estado_2 desc='Estado robot hijo 2 sin data'
-   meta: {'run_when': 'True'}
-   command:
-     "SIN_DATA"
-
-CMD11.e01 father=setVar var=v_orq_estado_3 desc='Estado robot hijo 3 omitido'
-   meta: {'run_when': 'True'}
-   command:
-     "OMITIDO"
-
-CMD11.e02 father=setVar var=v_orq_estado_4 desc='Estado robot hijo 4 omitido'
-   meta: {'run_when': 'True'}
-   command:
-     "OMITIDO"
-
-CMD11.e03 father=setVar var=v_orq_estado_general desc='Cierre general sin data'
-   meta: {'run_when': 'True'}
-   command:
-     "FINALIZADO_SIN_DATA"
-
-CMD11.e04 father=execScriptPython desc='Registrar ausencia de data y omisión de hijos 3 y 4'
-   meta: {'run_when': 'True'}
-   command:
-     from datetime import datetime
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         detalle = "No se encontró archivo Excel o no había filas para continuar con los hijos 3 y 4"
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|2_Embarques {GetVar('v_orq_estado_2')} | {detalle}\n")
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|3_Lectura_de_COAS_e_Informe OMITIDO\n")
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|4_Envio_Invoice OMITIDO\n")
-
-
-CMD12 father=setVar var=v_orq_estado_general desc='Cierre general por fallo de precheck'
-   meta: {'run_when': 'GetVar("v_precheck_estado") != "OK"'}
-   command:
-     "DETENIDO_PRECHECK"
-
-CMD13 father=setVar var=v_orq_estado_1 desc='Estado robot hijo 1 omitido por precheck'
-   meta: {'run_when': 'GetVar("v_precheck_estado") != "OK"'}
-   command:
-     "OMITIDO"
-
-CMD14 father=setVar var=v_orq_estado_2 desc='Estado robot hijo 2 omitido por precheck'
-   meta: {'run_when': 'GetVar("v_precheck_estado") != "OK"'}
-   command:
-     "OMITIDO"
-
-CMD15 father=setVar var=v_orq_estado_3 desc='Estado robot hijo 3 omitido por precheck'
-   meta: {'run_when': 'GetVar("v_precheck_estado") != "OK"'}
-   command:
-     "OMITIDO"
-
-CMD16 father=setVar var=v_orq_estado_4 desc='Estado robot hijo 4 omitido por precheck'
-   meta: {'run_when': 'GetVar("v_precheck_estado") != "OK"'}
-   command:
-     "OMITIDO"
-
-CMD17 father=execScriptPython desc='Registrar detención por precheck fallido'
-   meta: {'run_when': 'GetVar("v_precheck_estado") != "OK" and GetVar("v_orq_log_path") != ""'}
-   command:
-     from datetime import datetime
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|Flujo detenido por precheck | {GetVar('v_precheck_detalle')}\n")
-
-CMD18 father=execScriptPython desc='Registrar cierre general y duración'
-   meta: {'run_when': 'True'}
-   command:
-     from datetime import datetime
-     inicio_txt = GetVar("v_orq_inicio")
-     fmt = "%Y-%m-%d %H:%M:%S"
-     fin = datetime.now()
-     SetVar("v_orq_fin", fin.strftime(fmt))
-     dur = ""
-     try:
-         if inicio_txt:
-             dur = str(fin - datetime.strptime(inicio_txt, fmt))
-     except Exception:
-         dur = ""
-     SetVar("v_orq_duracion", dur)
-     ruta_log = GetVar("v_orq_log_path")
-     if ruta_log:
-         with open(ruta_log, "a", encoding="utf-8") as f:
-             f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|Fin del flujo | estado={GetVar('v_orq_estado_general')} | duracion={dur}\n")
-
-CMD19 father=log_message desc='Resumen final'
-   meta: {'run_when': 'True'}
-   command:
-     Resumen orquestador: {v_orq_estado_general} | PRECHECK={v_orq_estado_0_1} | H1={v_orq_estado_1} | H2={v_orq_estado_2} | H3={v_orq_estado_3} | H4={v_orq_estado_4}
+--- COMANDOS ---
+  CMD00 [execScriptPython] Resolver v_root_onedrive segun usuario de Windows (MPFSLY01 usa ruta alterna)
+       | import os
+       | 
+       | # Resolver ruta base segun usuario de Windows que ejecuta el bot
+       | usuario = os.environ.get("USERNAME", "").strip().upper()
+       | if usuario == "MPFSLY01":
+       |     ruta = r"C:\Users\MPFSLY01\OneDrive - mpf.com.pe (1)"
+       |     SetVar("v_root_onedrive", ruta)
+       | # Si no es MPFSLY01 se mantiene el hardvar configurado en este bot
+       | 
+  CMD01 [execScriptPython] Inicializar timestamp del orquestador
+       | from datetime import datetime
+       | inicio = datetime.now()
+       | SetVar("v_orq_inicio", inicio.strftime("%Y-%m-%d %H:%M:%S"))
+       | SetVar("v_orq_hay_data", "0")
+  CMD02 [setVar] Estado inicial del orquestador
+  CMD03 [execRocketBotDB] Ejecutar verificación de condiciones preliminares
+  CMD04 [setVar] Estado del precheck
+  CMD05 [setVar] Reusar log central del precheck
+  CMD06 [execScriptPython] Registrar resultado del precheck
+       | from datetime import datetime
+       | ruta_log = GetVar("v_orq_log_path")
+       | if ruta_log:
+       |     with open(ruta_log, "a", encoding="utf-8") as f:
+       |         f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|Precheck {GetVar('v_precheck_estado')} | {GetVar('v_precheck_detalle')}\n")
+  CMD07 [setVar] Continuar flujo solo si el precheck está OK
+  CMD08 [execRocketBotDB] Creación de las carpetas dentro del periodo
+  CMD09 [setVar] Estado robot hijo 1
+  CMD10 [execScriptPython] Registrar resultado del hijo 1
+       | from datetime import datetime
+       | ruta_log = GetVar("v_orq_log_path")
+       | if ruta_log:
+       |     detalle = GetVar("v_h1_detalle") if GetVar("v_h1_detalle") else "Sin detalle"
+       |     with open(ruta_log, "a", encoding="utf-8") as f:
+       |         f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|1_Crear_Carpetas {GetVar('v_orq_estado_1')} | {detalle}\n")
+  CMD11 [execRocketBotDB] Revisión de los embarques
+  CMD12 [evaluateIf] Continuar solo si hay archivo y filas para procesar
+  CMD13 [setVar] Cierre general por fallo de precheck
+  CMD14 [setVar] Estado robot hijo 1 omitido por precheck
+  CMD15 [setVar] Estado robot hijo 2 omitido por precheck
+  CMD16 [setVar] Estado robot hijo 3 omitido por precheck
+  CMD17 [setVar] Estado robot hijo 4 omitido por precheck
+  CMD18 [execScriptPython] Registrar detención por precheck fallido
+       | from datetime import datetime
+       | ruta_log = GetVar("v_orq_log_path")
+       | if ruta_log:
+       |     with open(ruta_log, "a", encoding="utf-8") as f:
+       |         f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|Flujo detenido por precheck | {GetVar('v_precheck_detalle')}\n")
+  CMD19 [execScriptPython] Registrar cierre general y duración
+       | from datetime import datetime
+       | inicio_txt = GetVar("v_orq_inicio")
+       | fmt = "%Y-%m-%d %H:%M:%S"
+       | fin = datetime.now()
+       | SetVar("v_orq_fin", fin.strftime(fmt))
+       | dur = ""
+       | try:
+       |     if inicio_txt:
+       |         dur = str(fin - datetime.strptime(inicio_txt, fmt))
+       | except Exception:
+       |     dur = ""
+       | SetVar("v_orq_duracion", dur)
+       | ruta_log = GetVar("v_orq_log_path")
+       | if ruta_log:
+       |     with open(ruta_log, "a", encoding="utf-8") as f:
+       |         f.write(f"{datetime.now().strftime('%H:%M:%S')}|0_Flujo_Regular|Fin del flujo | estado={GetVar('v_orq_estado_general')} | duracion={dur}\n")
+  CMD20 [log_message] Resumen final
