@@ -11,7 +11,30 @@
       "WebFetch(domain:academy.rocketbot.com)",
       "WebFetch(domain:docs.rocketbot.com)",
       "Bash(git *)",
-      "Bash(grep -iE \"python|\\\\.exe$\")"
+      "Bash(grep -iE \"python|\\\\.exe$\")",
+      "Bash(python3 -c \"import sqlite3; conn = sqlite3.connect\\('c:/Repositorios/MPF - Rocketbot/Rocketbot---MPF/robot.db'\\); cur = conn.cursor\\(\\); cur.execute\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\); print\\([r[0] for r in cur.fetchall\\(\\)]\\); conn.close\\(\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3)",
+      "Bash(python3 .audit/patch_bots.py)",
+      "Bash(python3 -c \"import os; os.environ['PYTHONIOENCODING']='utf-8'\")",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(python3 -X utf8 .audit/patch_bots.py)",
+      "Bash(python3 -X utf8)",
+      "Bash(python3 -X utf8 -c ' *)",
+      "Bash(python3 -X utf8 .audit/patch_bot29_onedrive.py)",
+      "Bash(python3 -X utf8 .audit/patch_bot29_onedrive2.py)",
+      "Bash(python3 -X utf8 .audit/patch_bot27_cmd00_fix.py)",
+      "Bash(python3 -X utf8 .audit/patch_bot27_rawstring.py)",
+      "Bash(python3 -X utf8 .audit/patch_bot29_indent_fix.py)",
+      "Bash(python3 -X utf8 .audit/patch_bot29_remove_root_onedrive_var.py)",
+      "Bash(python3 -X utf8 .audit/patch_bot29_remove_subprocess.py)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:market.rocketbot.co)",
+      "WebFetch(domain:market.rocketbot.com)",
+      "Read(//c/Program Files \\(x86\\)/Rocketbot/modules//**)",
+      "Read(//c/Program Files \\(x86\\)/Rocketbot/modules/PDF/**)",
+      "Read(//c/Program Files \\(x86\\)/Rocketbot/modules/pdf/**)",
+      "Bash(python3 -X utf8 .audit/patch_bot13_fitz.py)"
     ]
   }
 }
