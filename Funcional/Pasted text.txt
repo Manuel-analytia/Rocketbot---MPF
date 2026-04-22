@@ -1,0 +1,364 @@
+Quiero que actúes como arquitecto y programador técnico y revisor funcional de un proyecto RPA en Rocketbot para el proceso “Implementación RPA – Envío de correos COMEX”. Vamos a retomar el trabajo desde una versión anterior de la base robot.db, pero debes considerar TODA esta estrategia como línea base obligatoria. No elimines, simplifiques ni omitas pasos, porque luego lo auditaremos contra el documento funcional.
+
+OBJETIVO GENERAL
+Diseñar, validar y mejorar una solución Rocketbot modular para automatizar:
+1) revisión de programación semanal de embarques,
+2) validación de COAs e informes,
+3) validación y envío de Invoice,
+4) trazabilidad completa,
+5) control previo de condiciones técnicas y funcionales.
+
+La solución debe quedar alineada con el funcional:
+- uso de rutas oficiales,
+- destinatarios configurados en TXT,
+- bitácora con fecha/hora/estado,
+- no reproceso de documentos enviados,
+- control de errores e incidencias,
+- ejecución diaria en horario definido,
+- validación de documentación completa,
+- y mantenimiento mínimo de código.
+
+CONTEXTO DE ARQUITECTURA
+El robot ya no es monolítico. Está dividido en 5 bots principales:
+- 0_Flujo_Regular (padre)
+- 1_Crear_Carpetas
+- 2_Embarques
+- 3_Lectura_de_COAS_e_Informe
+- 4_Envio_Invoice
+
+Además, se definió crear un bot adicional:
+- 0.1_Verificacion_Condiciones_Preliminares
+
+ESTRATEGIA OBLIGATORIA
+Quiero que trabajes bajo estas reglas:
+
+1. No eliminar pasos del flujo
+Todo análisis, refactor o propuesta debe preservar la cobertura funcional completa del proceso, aunque internamente cambiemos la arquitectura.
+
+2. Priorizar Python
+Siempre que sea razonable, implementar la lógica con Python dentro de Rocketbot y minimizar dependencia de comandos nativos de Rocketbot. La lógica de negocio, validaciones, creación de estructuras, lectura de configuración, logs y reglas de fecha/ruta deben ir preferentemente en Python. Usa SetVar para devolver valores a Rocketbot.
+
+3. Arquitectura modular
+Mantener el modelo padre-hijos.
+El padre debe orquestar.
+Los hijos deben encapsular responsabilidades concretas.
+Evitar mezcla de lógica de infraestructura con lógica de negocio.
+
+4. Auditoría contra funcional
+Cada cambio debe justificarse contra el documento funcional.
+No se pueden introducir atajos que rompan:
+- rutas oficiales,
+- bitácora,
+- destinatarios por TXT,
+- no duplicidad,
+- validación documental,
+- contingencias.
+
+RUTA TÉCNICA HARDOCODEADA
+Solo se acepta una ruta hardcodeada de arranque, que representa el OneDrive base del entorno:
+
+C:\Users\manue\OneDrive - mpf.com.pe
+
+Desde esa raíz se derivan dos subrutas configurables de negocio:
+- SAN ISIDRO - PROGRAMACION SEMANAL DE EMBARQUES
+- SAN ISIDRO - RIVERSIDE NATURAL FOODS, LTD
+
+Estas dos NO deben tratarse como rutas redundantes; ambas son raíces funcionales necesarias del proceso.
+
+ESTRUCTURA CENTRALIZADA “0. Bot”
+La carpeta técnica central debe existir solo en:
+SAN ISIDRO - PROGRAMACION SEMANAL DE EMBARQUES\0. Bot
+
+Dentro de “0. Bot” deben existir y administrarse estas subcarpetas:
+- Logs
+- Rutas
+- Correos
+- Pruebas
+- Temp
+- Evidencias (opcional si aporta trazabilidad, pero no debe romper el diseño limpio)
+
+No crear múltiples carpetas “0. Bot” en distintas raíces.
+Debe existir una sola, centralizada.
+
+CONFIGURACIÓN CENTRALIZADA DE RUTAS
+Se debe crear y usar un Excel central:
+0. Bot\Rutas\Config_Rutas.xlsx
+
+Debe tener un diseño limpio, sin rutas redundantes.
+Guardar solo:
+- raíces reales,
+- nombres configurables de subcarpetas,
+- rutas que cambian entre entornos,
+- rutas no derivables con seguridad.
+
+No guardar rutas hijas si pueden derivarse automáticamente.
+
+PROPUESTA DE ESTRUCTURA DEL EXCEL
+Crear múltiples hojas, como mínimo:
+
+Hoja 1: BASE
+Debe permitir configurar:
+- ROOT_ONEDRIVE
+- ROOT_EMBARQUES
+- ROOT_RIVERSIDE
+
+Hoja 2: SUBRUTAS_BOT
+Debe permitir configurar nombres y/o relativas de:
+- BOT_ROOT
+- BOT_LOGS
+- BOT_RUTAS
+- BOT_CORREOS
+- BOT_PRUEBAS
+- BOT_TEMP
+
+Hoja 3: SUBRUTAS_NEGOCIO
+Debe permitir configurar nombres/rutas relativas de:
+- carpeta de coordinación de embarques
+- carpeta COAs
+- carpeta informes
+- carpeta Invoice
+- otras subcarpetas funcionales necesarias
+
+IMPORTANTE:
+Los nombres de subcarpetas deben ser configurables desde Excel para tocar el mínimo posible el código si cambia la estructura en el entorno.
+
+REGLAS DE CONFIGURACIÓN
+1. Si Config_Rutas.xlsx no existe, debe crearse automáticamente con plantilla base.
+2. Si existe pero tiene rutas obligatorias vacías, el proceso no debe continuar.
+3. El precheck debe notificar claramente qué campos faltan.
+4. El proceso debe evitar duplicidad y sobreconfiguración.
+5. Debe revisarse constantemente que no estemos creando rutas repetidas o innecesarias.
+
+GESTIÓN DE CORREOS
+Dentro de:
+0. Bot\Correos
+
+deben existir:
+- Para.txt
+- CC.txt
+- CO.txt
+
+Reglas:
+- un correo por línea,
+- ignorar líneas vacías,
+- idealmente permitir comentarios con #,
+- usar estos TXT como fuente oficial de destinatarios,
+- no dejar correos hardcodeados en el flujo salvo reglas funcionales explícitas, como el correo QA que deba agregarse según corresponda al proceso de COAs e informes.
+
+LOGS
+Centralizar todos los logs en:
+0. Bot\Logs
+
+Formato del archivo:
+LOG - YYYY-MM-DD HH.MM.SS.txt
+
+No usar nombres de archivo con “:” por compatibilidad Windows.
+
+Contenido interno del log:
+HORA|Proceso|Evento
+
+Ejemplo:
+15:03:22|0.1_Verificacion_Condiciones_Preliminares|Inicio del proceso
+15:03:23|0.1_Verificacion_Condiciones_Preliminares|Ruta ROOT_EMBARQUES válida
+15:03:24|1_Crear_Carpetas|Carpeta Semana 17 creada
+
+Objetivo:
+- evitar revisar demasiadas carpetas,
+- concentrar trazabilidad,
+- facilitar auditoría,
+- registrar errores e hitos relevantes.
+
+PRUEBAS CONTROLADAS
+Dentro de:
+0. Bot\Pruebas
+
+debe existir:
+pruebas.txt
+
+Regla de funcionamiento:
+- si no existe, debe crearse automáticamente,
+- si contiene un entero positivo, ese valor representa el número de semana a usar para pruebas,
+- si está vacío, en cero, o inválido, se usa la semana actual ISO.
+
+Esto debe permitir probar semanas pasadas o futuras sin tocar código.
+
+VARIABLES SUGERIDAS
+- v_semana_forzada
+- v_numero_semana_trabajo
+- v_anio_semana
+- v_ruta_log_actual
+- v_precheck_estado
+- v_precheck_detalle
+
+SEMANA DE TRABAJO
+La estructura objetivo ya no es:
+Año -> Mes -> Semana
+
+Ahora debe ser:
+Año -> Semana del año
+
+Usar semana ISO.
+La carpeta operativa semanal debe quedar bajo:
+<ROOT_EMBARQUES>\<AÑO_ISO>\Semana <N>
+
+Si por compatibilidad algún proceso necesita mes calendario para hojas Excel o registros, se puede calcular desde la fecha/semana, pero NO debe reintroducir una estructura física Año->Mes->Semana.
+
+ROBOT 0.1_VERIFICACION_DE_CONDICIONES_PRELIMINARES
+Este robot debe ejecutarse antes de todo el resto.
+
+Responsabilidades:
+1. Validar existencia de ROOT_ONEDRIVE.
+2. Resolver ROOT_EMBARQUES y ROOT_RIVERSIDE.
+3. Crear o validar la carpeta central 0. Bot.
+4. Crear o validar Logs, Rutas, Correos, Pruebas y Temp.
+5. Crear Config_Rutas.xlsx si no existe.
+6. Crear Para.txt, CC.txt y CO.txt si no existen.
+7. Crear pruebas.txt si no existe.
+8. Cargar configuración desde Excel.
+9. Verificar que rutas obligatorias no estén vacías.
+10. Verificar que rutas críticas existan o puedan crearse.
+11. Escribir el inicio de la corrida en el log central.
+12. Exponer estado y detalle del precheck.
+
+Salidas esperadas:
+- v_precheck_estado = OK / ERROR
+- v_precheck_detalle = detalle legible
+- variables globales de rutas listas para los robots siguientes
+
+ROBOT 0_FLUJO_REGULAR (PADRE)
+Debe ser orquestador real, no solo lanzador secuencial.
+
+Debe:
+1. Ejecutar primero 0.1_Verificacion_Condiciones_Preliminares.
+2. Si el precheck falla, cortar de forma controlada.
+3. Ejecutar luego:
+   - 1_Crear_Carpetas
+   - 2_Embarques
+   - 3_Lectura_de_COAS_e_Informe
+   - 4_Envio_Invoice
+4. Registrar en log inicio, fin, duración y estado de cada hijo.
+5. Manejar compuertas de ejecución:
+   - si no hay data válida, no forzar hijos innecesarios,
+   - si 2_Embarques no deja datos útiles, 3 y 4 pueden omitirse,
+   - diferenciar EJECUTADO / OMITIDO / ERROR / SIN_DATA.
+6. Evitar depender solo de herencia implícita sin control.
+7. Diseñar la transición futura a Expose + Return Data donde tenga sentido, sin romper lo ya existente.
+
+ROBOT 1_CREAR_CARPETAS
+Debe:
+1. Ejecutarse después del precheck.
+2. Trabajar en Año -> Semana ISO.
+3. Crear las carpetas semanales del año según estrategia definida.
+4. Resolver semana actual o semana forzada desde pruebas.txt.
+5. Ubicar la carpeta semanal correcta.
+6. Buscar el Excel correspondiente dentro de la semana.
+7. Dejar variables listas para el siguiente robot.
+8. Registrar todo en log.
+
+Salidas sugeridas:
+- v_h1_estado
+- v_h1_detalle
+- v_ruta_semana
+- v_ruta_excel
+- v_total_semanas_anio
+
+ROBOT 2_EMBARQUES
+Debe:
+1. Ejecutarse con la configuración ya cargada por el precheck.
+2. Usar la misma lógica Año -> Semana ISO.
+3. Resolver correctamente la ruta de trabajo sin reintroducir la estructura vieja.
+4. Usar semana forzada de pruebas si existe.
+5. Encontrar el Excel semanal más reciente o el archivo correcto según la lógica funcional.
+6. Registrar hallazgos y faltantes en log.
+7. No disparar notificaciones SMTP durante pruebas si eso bloquea la validación del flujo.
+8. Preparar variables consistentes para que 3 y 4 continúen.
+
+Importante:
+Si internamente necesita mes calendario para hoja de registro o lógica auxiliar, se puede calcular, pero sin cambiar la estructura física de carpetas.
+
+ROBOT 3_LECTURA_DE_COAS_E_INFORME
+Debe alinearse al funcional:
+1. Revisar el Excel compartido con Calidad.
+2. Identificar “COMPLETO” en columnas COAs e informes por referencia/OP.
+3. Validar documentos en rutas oficiales.
+4. Detectar si existen documentos nuevos.
+5. Si no existen, notificar incidencia y registrar bitácora.
+6. Si existen:
+   - identificar línea de negocio, cliente y referencia,
+   - descargar COAs,
+   - filtrar y descargar informes por cliente, referencia y lotes,
+   - consolidar PDF,
+   - nombrar el archivo según estándar,
+   - preparar correo con plantilla,
+   - usar destinatarios en TXT,
+   - agregar correo QA cuando aplique,
+   - registrar resultado,
+   - archivar el PDF enviado en la carpeta correspondiente.
+7. Evitar reproceso de documentos ya enviados.
+8. Registrar estado completo de la ejecución.
+
+ROBOT 4_ENVIO_INVOICE
+Debe alinearse al funcional:
+1. Trabajar con embarques del reporte semanal.
+2. Validar que la factura exista al día siguiente del embarque y antes de la hora de corte definida por el funcional.
+3. Buscar el PDF Invoice en la ruta oficial.
+4. Respetar nomenclatura estándar:
+   - referencia + Invoice
+   - excepción por múltiples PO: referencia + Invoice + PO + número PO
+5. Enviar un correo independiente por PO cuando aplique.
+6. Usar destinatarios configurados en TXT.
+7. Registrar fecha, hora, cliente, referencia y estado.
+8. Evitar duplicidad y reproceso.
+9. Notificar incidencias cuando no exista archivo o haya error.
+10. Cerrar de forma controlada si hay error inesperado.
+
+REGLAS TRANSVERSALES
+1. No dejar credenciales embebidas en texto plano dentro del bot.
+2. Minimizar dependencias de comandos Rocketbot si Python puede resolverlo mejor.
+3. Toda lógica de creación de carpetas, lectura de TXT, lectura/escritura de Excel de configuración, selección de semana, y logging debe preferentemente hacerse en Python.
+4. Mantener compatibilidad con la modularidad ya existente.
+5. Cuando propongas cambios, indicar:
+   - qué bot se toca,
+   - qué bloque se cambia,
+   - qué variable entra,
+   - qué variable sale,
+   - qué riesgo se evita,
+   - y cómo se alinea al funcional.
+
+REGLAS DE ENTREGA
+Quiero que trabajes paso por paso por robot, pero conservando la visión integral.
+Cada vez que revises o modifiques un robot:
+1. primero explica el diagnóstico,
+2. luego el riesgo,
+3. luego la mejora propuesta,
+4. luego el impacto sobre los demás bots,
+5. y finalmente la implementación sugerida.
+
+Si vas a editar una DB o una versión del robot, no improvises. Debes respetar toda esta arquitectura base.
+
+TAMBIÉN QUIERO QUE TENGAS PRESENTE
+- Ya validamos que una versión anterior estaba incompleta.
+- Ya validamos que una versión nueva estaba separada en padre e hijos.
+- Ya se decidió que la carpeta técnica central será la Opción A: una sola carpeta “0. Bot”.
+- Ya se decidió que el diseño de rutas debe ser limpio y configurable.
+- Ya se decidió que la estructura física será Año -> Semana del año.
+- Ya se decidió usar TXT para Para/CC/CO.
+- Ya se decidió usar pruebas.txt para forzar semana en modo prueba.
+- Ya se decidió centralizar logs en archivo plano por corrida.
+- Ya se decidió priorizar Python sobre comandos nativos de Rocketbot.
+
+FORMA DE TRABAJO
+No respondas con generalidades.
+Quiero propuestas concretas, auditables y aterrizadas a Rocketbot.
+Si detectas inconsistencia entre arquitectura propuesta y funcional, debes señalarla.
+Si detectas rutas redundantes, debes simplificarlas.
+Si detectas dependencia peligrosa entre robots, debes marcarla.
+Si detectas una mejora que convenga migrar a Python, proponla.
+Si conviene mantener algo en comando nativo de Rocketbot por estabilidad, justifícalo.
+
+Empecemos revisando la versión anterior del robot.db que te comparta en ese chat, identificando:
+1. los bots existentes,
+2. cuál es el padre,
+3. cuáles son los hijos,
+4. qué parte ya cumple esta estrategia,
+5. qué parte todavía no.
