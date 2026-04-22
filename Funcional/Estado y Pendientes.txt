@@ -1,0 +1,216 @@
+===============================================================================
+ESTADO DEL PROYECTO - Bot RPA MPF (SAN ISIDRO)
+Fecha: 2026-04-22
+===============================================================================
+
+===============================================================================
+1. ARQUITECTURA ACTUAL
+===============================================================================
+
+Orquestador: Bot 27 (0_Flujo_Regular) SAN ISIDRO
+    |-- CMD00  [execScriptPython] Auto-deteccion OneDrive por USERNAME
+    |-- CMD01  Inicializar timestamp del orquestador
+    |-- CMD03  [execRocketBotDB "0_1_Verificacion_Condiciones"]   -> Bot 29
+    |-- CMD06  Escribir precheck en log
+    |-- CMD08  [execRocketBotDB "1_Crear_Carpetas"]                -> Bot 26
+    |-- CMD10  Escribir resultado Crear_Carpetas en log
+    |-- CMD11  [execRocketBotDB "2_Embarques"]                     -> Bot 30
+    |-- CMD12  [evaluateIf] si hay data -> continua con hijos 3 y 4
+    |       |-- [execRocketBotDB "3_Lectura_de_COAS_e_Informe"]    -> Bot 13
+    |       |-- [execRocketBotDB "4_Envio_Invoice"]                -> Bot 12
+    |-- CMD19  Calcular duracion y cerrar log
+
+Paths resueltos por bot 29 (Precheck):
+    ROOT_ONEDRIVE     = C:\Users\{USERNAME}\OneDrive - mpf.com.pe (auto-detectado)
+    ROOT_EMBARQUES    = {ROOT_ONEDRIVE}\SAN ISIDRO - PROGRAMACION SEMANAL DE EMBARQUES
+    ROOT_RIVERSIDE    = {ROOT_ONEDRIVE}\SAN ISIDRO - RIVERSIDE NATURAL FOODS, LTD
+    BOT_ROOT          = {ROOT_EMBARQUES}\0. Bot
+    RUTA_SEMANA       = {ROOT_EMBARQUES}\{YEAR}\Semana {N}
+    Config_Rutas.xlsx = {BOT_ROOT}\Rutas\Config_Rutas.xlsx
+
+Config_Rutas.xlsx (hojas):
+    BASE:             ROOT_EMBARQUES, ROOT_RIVERSIDE (ROOT_ONEDRIVE ya no se usa, es hardvar)
+    SUBRUTAS_BOT:     BOT_ROOT, BOT_LOGS, BOT_RUTAS, BOT_CORREOS, BOT_PRUEBAS, BOT_TEMP, BOT_EVIDENCIAS
+    SUBRUTAS_NEGOCIO: CARPETA_COORDINACION_EMBARQUES, CARPETA_COAS, CARPETA_INFORMES, CARPETA_INVOICE
+    CREDENCIALES:     SMTP_HOST, SMTP_PORT, SMTP_USER/PASS, MICROSOFT_USER/PASS, URL_CERTIFICADOS/INFORMES/INVOICE
+
+
+===============================================================================
+2. FIXES APLICADOS (commits recientes en branch "Claude")
+===============================================================================
+
+[f4ff230] Fix: convert all setVar+GetVar() to execScriptPython (138 commandos, 18 bots)
+   Razon: comandos tipo setVar con GetVar() fallan silenciosamente -> "ERROR_NOT_VAR"
+
+[3a513f1] Remove pypdf warning / auto-detect OneDrive / drop ROOT_ONEDRIVE from Excel
+   - Bot 13 usa fitz (PyMuPDF) del modulo PDF de Rocketbot, pypdf obsoleto
+   - Bot 27 CMD00 ahora auto-detecta OneDrive por USERNAME
+   - ROOT_ONEDRIVE sale del template de Config_Rutas.xlsx (se usa hardvar)
+
+[ff36bd4] Add detailed path-debug logging to bots 26, 29, 30
+   - Precheck log ahora incluye ROOT_RIVERSIDE, ANIO, NOMBRE_SEMANA, RUTA_SEMANA_ESPERADA
+
+[c0c9751] Debug: dump all path vars + dir listing into v_h1_detalle / log
+   - Bot 26 CMD12 y Bot 30 CMD06 listan todos los archivos del directorio
+   - Debug info ahora llega via v_h1_detalle al log del orquestador
+
+[bdbbd47] *** FIX RAIZ: Rocketbot non-module vars reset to ERROR_NOT_VAR ***
+   HALLAZGO CRITICO: en Rocketbot, las variables que NO estan declaradas en el
+   modulo del bot hijo se REINICIAN a 'ERROR_NOT_VAR' entre cada execScriptPython.
+   Solo las variables del modulo persisten entre comandos.
+
+   Fixes:
+   - Bot 26 modulo: agregadas v_root_embarques, v_anio_semana,
+     v_numero_semana_trabajo, v_nombre_semana, v_ruta_semana
+   - Bot 30 modulo: mismas 5 variables agregadas
+   - Bot 26 CMD00: auto-contenido (detecta OneDrive + lee Config_Rutas.xlsx)
+   - Bot 26 CMD08: auto-contenido (detecta semana desde pruebas.txt o ISO)
+   - Bot 30 CMD00 / CMD01: mismos auto-contenidos
+
+===============================================================================
+3. REGLAS APRENDIDAS DE ROCKETBOT
+===============================================================================
+
+REGLA 1: setVar con GetVar() NO funciona
+    [setVar] v_x = GetVar("a") + "\\" + GetVar("b")   -> FALLA, deja v_x='ERROR_NOT_VAR'
+    Usar siempre execScriptPython: SetVar('v_x', os.path.join(GetVar('a'), GetVar('b')))
+
+REGLA 2: Variables entre bots hijos NO se heredan
+    execRocketBotDB crea un scope donde GetVar("v_x") devuelve 'ERROR_NOT_VAR'
+    para cualquier variable no declarada en el MODULO del bot hijo.
+
+REGLA 3: Variables no-modulo se pierden entre comandos
+    Dentro de un mismo bot, si haces SetVar('v_x', 'algo') en un execScriptPython
+    y v_x no esta en el modulo del bot, el SIGUIENTE comando ve 'ERROR_NOT_VAR'.
+    Las variables del modulo persisten; las no-modulo se reinician.
+
+REGLA 4: GetVar para undefined retorna 'ERROR_NOT_VAR' (no '' ni None)
+    Validar siempre: if valor and valor != 'ERROR_NOT_VAR':
+
+REGLA 5: execRocketBotDB busca bots por NOMBRE
+    Hay multiples bots con el mismo nombre (1_Crear_Carpetas: IDs 7,11,14,15,19,22,26)
+    Rocketbot resuelve por nombre. Bot 26 es el SAN ISIDRO confirmado.
+
+
+===============================================================================
+4. ESTADO ACTUAL DEL FLUJO
+===============================================================================
+
+FUNCIONANDO:
+    [x] Bot 29 Precheck: resuelve todas las rutas, lee Config_Rutas, crea Envios.xlsx
+    [x] Bot 26 1_Crear_Carpetas: crea estructura Anio > Semana, busca Excel de embarques
+    [x] Bot 30 2_Embarques: lee Excel de embarques, identifica filas RIVERSIDE
+    [x] Auto-deteccion de OneDrive por USERNAME en cualquier maquina
+
+POR PROBAR EN FLUJO COMPLETO:
+    [ ] Bot 13 3_Lectura_de_COAS_e_Informe: ya migrado a fitz (pendiente test real)
+    [ ] Bot 12 4_Envio_Invoice: no revisado en esta sesion
+
+
+===============================================================================
+5. CAMBIOS REQUERIDOS SEGUN NUEVAS ESPECIFICACIONES
+===============================================================================
+
+CONTEXTO ADICIONAL DEL CLIENTE (sesion 2026-04-22):
+
+A. ARCHIVO COAS / REGISTRO COORDINACION
+   - Ubicacion propuesta: {ROOT_EMBARQUES}\COORDINACION DE EMBARQUES\Registro Coordinacion.xlsx
+     (archivo maestro anual con 12 hojas mensuales ENE-DIC)
+   - NO es solo lectura: tiene ciclo de vida mixto
+     1. BOT ESCRIBE: cuando detecta embarques nuevos en el Excel semanal,
+        agrega filas al registro (Cliente, Embarque, Fecha, N de pedido)
+     2. CLIENTE LLENA MANUALMENTE: columnas COAS / Informes con "COMPLETO"
+     3. BOT LEE: solo procesa embarques marcados "COMPLETO"
+   - Hoja a usar: segun mes del lunes de la semana ISO (v_mes_semana ya existe)
+
+B. CREACION DE CARPETAS - CAMBIO DE COMPORTAMIENTO
+   Actual: bot 26 CMD07 crea TODAS las 52 semanas del anio
+   Requerido: crear SOLO la semana que entra en proceso
+   Pendiente confirmar: crear tambien la siguiente? mantener las anteriores?
+
+C. SEPARACION DE PROCESOS
+   Actual: bot 27 ejecuta COAS (bot 13) e Invoice (bot 12) secuencialmente
+   Requerido: dos procesos INDEPENDIENTES con triggers y notificaciones distintas
+
+   Proceso COAS:
+       Trigger: por confirmar (viernes? cuando cliente sube Excel?)
+       Notificacion fin proceso: destinatarios y formato propios
+
+   Proceso Invoice:
+       Trigger: por confirmar
+       Notificacion fin proceso: destinatarios y formato propios
+
+D. NOTIFICACION DE EMBARQUES NUEVOS
+   Si en una corrida aparecen embarques que no estaban en el registro ->
+   enviar email con la lista actualizada para la semana.
+
+E. ARCHIVOS SAP DURANTE LA SEMANA
+   Cliente sube otros archivos (descargados de SAP) durante la semana en la
+   carpeta semanal. Pendiente definir:
+   - El bot debe detectarlos y procesarlos? O solo los ignora?
+   - Calidad los usa para cargar los documentos que luego marcan "COMPLETO"?
+
+
+===============================================================================
+6. PREGUNTAS ABIERTAS PARA EL CLIENTE (antes de seguir implementando)
+===============================================================================
+
+1. Registro Coordinacion: un solo archivo maestro? o "Registro Coordinacion 2026.xlsx"
+   nuevo cada anio?
+
+2. Trigger exacto de cada proceso (COAS / Invoice):
+   - Dia y hora de corrida?
+   - Evento disparador (archivo nuevo, hora fija, manual)?
+
+3. Creacion de carpetas semanales:
+   - Solo la semana actual?
+   - Tambien la siguiente como adelanto?
+   - Que pasa con semanas pasadas sin cerrar?
+
+4. Deteccion de embarques nuevos: comparar Excel semanal vs Registro Coordinacion
+   del mes -> los faltantes van a la notificacion. Confirmar?
+
+5. Archivos de SAP: el bot los detecta/procesa o quedan como referencia para
+   que Calidad los consulte al marcar COMPLETO?
+
+
+===============================================================================
+7. ARCHIVOS Y UBICACIONES IMPORTANTES EN EL REPO
+===============================================================================
+
+Repo:       c:\Repositorios\MPF - Rocketbot\Rocketbot---MPF
+Branch:     Claude
+DB:         robot.db  (SQLite, todos los bots codificados en base64/JSON)
+
+Carpeta Funcional/:
+    Doc. Funcional corregido.docx       (spec original del cliente)
+    Pasted text.txt                     (transcripcion texto del doc funcional)
+    Ejemplo de archivo de embarque.xlsx (input semanal del cliente)
+    Ejemplo de archivo COAS.xlsx        (Registro Coordinacion, ver punto 5.A)
+
+Carpeta .audit/ (gitignored, scripts de parcheo):
+    patch_bot26_30_selfcontained.py     (ultimo fix, auto-contenidos)
+    patch_bot27_onedrive_autodetect.py
+    patch_debug_h1detalle.py
+    patch_debug_logging.py
+    patch_bot13_fitz.py
+    patch_bot29_remove_subprocess.py
+    patch_bot29_remove_root_onedrive_var.py
+
+Logs del bot (en maquina cliente):
+    {ROOT_EMBARQUES}\0. Bot\Logs\LOG - YYYY-MM-DD HH.MM.SS.txt
+
+
+===============================================================================
+8. COMO SEGUIR EN LA OTRA PC
+===============================================================================
+
+1. git pull origin Claude (asegurar que tienes los ultimos commits)
+2. Abrir Rocketbot apuntando a robot.db del repo
+3. Confirmar respuestas a preguntas de seccion 6 antes de codificar
+4. Proximos pasos sugeridos:
+   a) Modificar bot 26 CMD07 para crear solo semana actual (no las 52)
+   b) Disenar escritura al Registro Coordinacion (bot 30 o un bot nuevo)
+   c) Separar orquestadores: uno para COAS, otro para Invoice
+   d) Implementar notificacion de embarques nuevos
+===============================================================================
