@@ -1,0 +1,289 @@
+===============================================================================
+GUIA DE TRABAJO CON ROCKETBOT - Proyecto RPA MPF (SAN ISIDRO)
+Ultima actualizacion: 2026-04-22
+===============================================================================
+
+PROPOSITO DE ESTE DOCUMENTO
+Este archivo NO es el spec funcional ni el estado del proyecto. Es una guia
+operativa sobre como trabajar con Rocketbot en este repo: reglas duras de la
+herramienta, convenciones del codigo, principios de arquitectura y metodologia
+de cambios. Para lo demas:
+
+    - Spec funcional del cliente .............. "Doc. Funcional corregido.docx"
+    - Estado actual, fixes y pendientes ....... "Estado y Pendientes.txt"
+
+Si algo en este archivo contradice a los otros dos, gana el que corresponda:
+el .docx manda sobre requerimientos; "Estado y Pendientes" manda sobre lo que
+ya esta implementado o decidido.
+
+
+===============================================================================
+1. REGLAS DURAS DE ROCKETBOT (aprendidas a la mala)
+===============================================================================
+
+Estas reglas vienen de fixes ya hechos. No volver a romperlas.
+
+REGLA 1: setVar + GetVar() NO funciona
+    Comando nativo tipo:
+        [setVar] v_x = GetVar("a") + "\\" + GetVar("b")
+    Falla silenciosamente y deja v_x = 'ERROR_NOT_VAR'.
+    Usar siempre Python:
+        [execScriptPython]
+        import os
+        SetVar('v_x', os.path.join(GetVar('a'), GetVar('b')))
+
+REGLA 2: Variables padre -> hijo solo viajan si estan declaradas en AMBOS
+    Para que una variable del padre llegue al hijo via execRocketBotDB,
+    debe estar declarada en la seccion de variables (modulo) TANTO del
+    padre COMO del hijo. Si el hijo no la tiene declarada, GetVar("v_x")
+    devuelve 'ERROR_NOT_VAR' aunque el padre la haya seteado.
+
+    Consecuencia practica: toda variable que deba cruzar de padre a hijo
+    se declara en los dos bots. Si una variable es interna del hijo, se
+    declara solo en el hijo.
+
+REGLA 3: Variables no-modulo se pierden entre comandos
+    Dentro de un mismo bot, si haces SetVar('v_x', 'algo') en un
+    execScriptPython y v_x no esta declarada en el modulo del bot, el
+    siguiente comando ve 'ERROR_NOT_VAR'. Solo las variables del modulo
+    persisten entre comandos; las demas se reinician.
+
+    Consecuencia: toda variable que deba cruzar comandos debe declararse
+    en el modulo del bot.
+
+REGLA 4: GetVar para undefined retorna 'ERROR_NOT_VAR' (no '' ni None)
+    Validar siempre:
+        valor = GetVar('v_x')
+        if valor and valor != 'ERROR_NOT_VAR':
+            ...
+
+REGLA 5: execRocketBotDB resuelve por NOMBRE, no por ID
+    Si hay varios bots con el mismo nombre (p.ej. "1_Crear_Carpetas"
+    aparece con IDs 7, 11, 14, 15, 19, 22, 26), Rocketbot elige por
+    nombre. En este repo, los IDs validados del flujo SAN ISIDRO estan
+    documentados en "Estado y Pendientes.txt" seccion 1.
+
+
+===============================================================================
+2. PRINCIPIOS DE ARQUITECTURA
+===============================================================================
+
+Modelo padre-hijos ya adoptado:
+    - El padre (0_Flujo_Regular) orquesta; no mete logica de negocio.
+    - Cada hijo encapsula una responsabilidad concreta.
+    - La infraestructura (rutas, config, logs) va separada del negocio.
+
+Hardcodeado vs Hardvareado (importante, se confunden):
+    - HARDCODEADO = valor fijo escrito en codigo Python dentro de un
+      execScriptPython. Se toca editando el bot.
+    - HARDVAREADO = valor por defecto definido en la seccion de
+      variables del bot (p.ej. v_root_onedrive = "C:\Users\manue\
+      OneDrive - mpf.com.pe"). Se toca desde la UI de Rocketbot sin
+      abrir codigo.
+    En este proyecto preferimos HARDVAREADO para rutas raiz y valores
+    de entorno: es editable sin tocar Python y viaja naturalmente entre
+    bots si se declara en los modulos correspondientes.
+
+Resolucion de la raiz OneDrive (cadena de fallback):
+    1. Leer v_root_onedrive hardvareada del modulo del bot.
+    2. Si esa ruta no existe en el filesystem (usuario distinto, otra
+       maquina), auto-detectar por USERNAME:
+           ROOT_ONEDRIVE = C:\Users\{USERNAME}\OneDrive - mpf.com.pe
+       y actualizar v_root_onedrive con el valor resuelto.
+    3. Desde ROOT_ONEDRIVE se derivan las subrutas leyendo
+       Config_Rutas.xlsx (ROOT_EMBARQUES, ROOT_RIVERSIDE, subcarpetas
+       de 0. Bot, subcarpetas de negocio).
+    No hay rutas hardcodeadas en Python. La unica ruta "fija" es el
+    valor hardvareado, y aun ese tiene fallback por USERNAME.
+
+Auto-contenido por bot hijo:
+    Aunque las variables pueden viajar padre -> hijo (REGLA 2), el
+    patron adoptado es que cada bot hijo pueda reconstruir lo que
+    necesita:
+        - resolver OneDrive con la cadena de fallback anterior,
+        - leer Config_Rutas.xlsx,
+        - resolver semana ISO / semana forzada desde pruebas.txt.
+    Esto evita depender de que el padre haya corrido antes y facilita
+    correr cada hijo de forma aislada para debug.
+
+Una sola "0. Bot":
+    La carpeta tecnica central vive en
+        {ROOT_EMBARQUES}\0. Bot
+    No crear copias en otras raices.
+
+
+===============================================================================
+3. CONVENCIONES DE CODIGO
+===============================================================================
+
+3.1 Priorizar Python sobre comandos nativos
+    - Logica de negocio, validaciones, fechas, rutas, lectura/escritura
+      de Excel y TXT, y logging van en execScriptPython.
+    - Usar comandos nativos de Rocketbot solo cuando aporten (abrir
+      aplicaciones, interactuar con UI, clicks, SMTP si esta estable).
+    - Devolver valores a Rocketbot con SetVar().
+
+3.2 Variables del modulo
+    Declarar en el modulo del bot toda variable que:
+        - se use en mas de un comando,
+        - deba sobrevivir entre execScriptPython,
+        - represente estado del precheck o del flujo.
+    Si no, se pierde (REGLA 3).
+
+3.3 Credenciales
+    Nunca embeber en texto plano dentro del bot.
+    Fuente unica: hoja CREDENCIALES de Config_Rutas.xlsx
+    (SMTP_HOST/PORT/USER/PASS, MICROSOFT_USER/PASS, URL_*).
+
+3.4 Nombres de archivo
+    No usar ":" en nombres de archivo (incompatible con Windows).
+    Formato de log estandar:
+        LOG - YYYY-MM-DD HH.MM.SS.txt
+
+3.5 Formato interno de log
+        HORA|Proceso|Evento
+    Ejemplo:
+        15:03:22|0_1_Verificacion_Condiciones|Inicio del proceso
+        15:03:23|0_1_Verificacion_Condiciones|ROOT_EMBARQUES valida
+        15:03:24|1_Crear_Carpetas|Carpeta Semana 17 creada
+
+3.6 Estructura fisica de carpetas semanales
+        {ROOT_EMBARQUES}\{AÑO_ISO}\Semana {N}
+    No reintroducir Año -> Mes -> Semana. Si algun proceso necesita mes
+    calendario (p.ej. hoja mensual del Registro Coordinacion), calcularlo
+    desde la fecha; no reflejarlo en la estructura fisica.
+
+3.7 Destinatarios de correo
+    Fuente oficial: {BOT_ROOT}\Correos\{Para.txt, CC.txt, CO.txt}
+        - un correo por linea,
+        - lineas vacias se ignoran,
+        - prefijo '#' para comentarios.
+    No hardcodear correos en el flujo, salvo reglas funcionales
+    explicitas (p.ej. QA en proceso COAs).
+
+3.8 Modo prueba
+    {BOT_ROOT}\Pruebas\pruebas.txt
+        - entero positivo = numero de semana ISO forzada,
+        - vacio / 0 / invalido = semana actual ISO.
+    Si no existe, crearlo vacio.
+
+
+===============================================================================
+4. NOMENCLATURA DEL PROYECTO
+===============================================================================
+
+4.1 Nombres de bot
+    Patron: <numero>_<Descripcion_En_Snake_Con_Capital_Inicial>
+    El "." del spec funcional se reemplaza por "_" en el bot real
+    porque Rocketbot no tolera "." en nombres.
+        0_Flujo_Regular                   (padre / orquestador)
+        0_1_Verificacion_Condiciones      (precheck, NO "0.1_...")
+        1_Crear_Carpetas
+        2_Embarques
+        3_Lectura_de_COAS_e_Informe
+        4_Envio_Invoice
+
+4.2 Variables del bot (prefijo siempre "v_", snake_case)
+    Rutas ................... v_ruta_base, v_ruta_anio, v_ruta_semana,
+                              v_ruta_excel, v_ruta_log_actual,
+                              v_ruta_registro
+    Raices hardvareadas ..... v_root_onedrive, v_root_embarques,
+                              v_root_riverside
+    Semana / fecha .......... v_anio_semana, v_numero_semana_trabajo,
+                              v_nombre_semana, v_mes_semana,
+                              v_semana_forzada
+    Totales y contadores .... v_total_*, v_i, v_i_registro
+    Datos de negocio ........ v_cliente, v_embarque, v_pedido,
+                              v_fecha_embarque, v_empresa_objetivo
+    Flags / booleanos ....... v_encontrado, v_existe_registro,
+                              v_guardado    (0 / 1 como string)
+    Precheck ................ v_precheck_estado, v_precheck_detalle
+    Orquestador ............. v_orq_inicio, v_orq_log_path,
+                              v_orq_estado_general, v_orq_estado_0_1,
+                              v_orq_estado_h1, v_orq_estado_h2, ...
+    Estado por hijo ......... v_h1_estado, v_h1_detalle
+                              v_h2_estado, v_h2_detalle, ...
+                              (h1 = primer hijo, h2 = segundo, etc.)
+
+4.3 Valores de estado estandar
+    Precheck ................ OK | ERROR
+    Estado de hijo .......... INICIADO | OK | OK_SIN_EXCEL | ERROR |
+                              SIN_DATA
+    Orquestador por hijo .... EJECUTADO | OMITIDO | ERROR | SIN_DATA
+    Orquestador general ..... EN_PRECHECK | EN_PROCESO |
+                              DETENIDO_PRECHECK | OK | ERROR
+
+4.4 Archivos y carpetas
+    Carpeta central ......... "0. Bot"   (con espacio y punto, literal)
+    Subcarpetas de 0. Bot ... Logs, Rutas, Correos, Pruebas, Temp,
+                              Evidencias
+    Archivo de config ....... Config_Rutas.xlsx
+        hojas ............... BASE, SUBRUTAS_BOT, SUBRUTAS_NEGOCIO,
+                              CREDENCIALES
+    Archivo de prueba ....... pruebas.txt
+    TXT de correos .......... Para.txt, CC.txt, CO.txt
+    Log por corrida ......... "LOG - YYYY-MM-DD HH.MM.SS.txt"
+    Carpeta semanal ......... {ROOT_EMBARQUES}\{AÑO_ISO}\Semana {N}
+    Registro coordinacion ... (pendiente confirmar ubicacion final;
+                              ver Estado y Pendientes.txt seccion 5.A)
+
+4.5 Claves de negocio
+    Clave de embarque ....... "{embarque}|{pedido}"
+        Usada para detectar duplicados en el Registro Coordinacion.
+        Se construye con .strip() en ambos lados.
+
+4.6 Meses (hojas del Registro Coordinacion)
+    Abreviatura 3 letras mayusculas en espanol:
+        ENE, FEB, MAR, ABR, MAY, JUN, JUL, AGO, SEP, OCT, NOV, DIC
+    El mes se calcula desde el lunes de la semana ISO
+    (v_mes_semana). No se refleja en estructura de carpetas.
+
+4.7 Columnas del Excel semanal de embarques
+        A = codigo de embarque
+        D = fecha de embarque
+        F = cliente
+        I = numero de pedido / PO
+    El filtro de RIVERSIDE se hace por columna F comparando con
+    v_empresa_objetivo (hardvareado = "RIVERSIDE NATURAL FOODS, LTD.").
+
+
+===============================================================================
+5. METODOLOGIA DE CAMBIOS
+===============================================================================
+
+Cada cambio a un bot sigue estos pasos, en este orden:
+
+    1. Diagnostico ....... que esta haciendo hoy, que falla o que falta.
+    2. Riesgo ............ que se rompe si no se toca / si se toca mal.
+    3. Mejora propuesta .. bloque exacto a cambiar, variables in/out.
+    4. Impacto ........... que otros bots o artefactos se ven afectados.
+    5. Implementacion .... parche concreto (idealmente un patch_*.py en
+                           .audit/ que modifica robot.db de forma
+                           auditable y reversible).
+
+No improvisar ediciones directas sobre robot.db. Los scripts de parcheo
+deben quedar en .audit/ (gitignored) por trazabilidad.
+
+Alineacion con funcional:
+    Cada cambio se justifica contra "Doc. Funcional corregido.docx".
+    No introducir atajos que rompan:
+        - rutas oficiales,
+        - bitacora centralizada,
+        - destinatarios por TXT,
+        - no duplicidad / no reproceso,
+        - validacion documental,
+        - contingencias y manejo de error.
+
+
+===============================================================================
+6. CHECKLIST RAPIDA ANTES DE TOCAR UN BOT
+===============================================================================
+
+[ ] Lei la seccion correspondiente del .docx funcional?
+[ ] Revise si ya hay un fix previo en commits recientes (Estado seccion 2)?
+[ ] Las variables que voy a usar estan declaradas en el modulo del bot?
+[ ] Estoy usando execScriptPython para logica con rutas / fechas / GetVar?
+[ ] Valido 'ERROR_NOT_VAR' despues de cada GetVar?
+[ ] Si es un bot hijo, es auto-contenido (detecta OneDrive y lee config)?
+[ ] Voy a escribir algo al log central con formato HORA|Proceso|Evento?
+[ ] Voy a dejar un patch_*.py reproducible en .audit/?
