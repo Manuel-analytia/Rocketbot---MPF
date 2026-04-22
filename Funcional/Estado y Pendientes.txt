@@ -75,20 +75,34 @@ Eliminadas de Config (ya no se usan, se ejecutan parches de limpieza):
 [bdbbd47] *** FIX RAIZ: vars no-modulo se reinician a ERROR_NOT_VAR ***
           + auto-contenido en bots 26 y 30 (CMD00/01/08)
 
+Patches aplicados (sesion 2026-04-22 post reunion Karla):
+[.audit/patch_bot29_config_template.py]   Template Config_Rutas + registro anual + subcarpetas correos
+[.audit/patch_bot26_semana_actual.py]     Solo semana actual (elimina loop de 52) + limpia no-ops
+[.audit/patch_bot32_logging.py]           Inicio de flujo + "Iniciando X" antes de cada hijo + OMITIDOs
+[.audit/patch_bot30_registro_coordinacion.py]  Python puro + pasada unica + notificacion embarques nuevos
+[.audit/patch_bot13_coas_informes.py]     Reescritura: gate COMPLETO + ORGANICO/PISCO + PDF sin T&C + plantillas
+[.audit/patch_bot12_invoice_fecha.py]     Reescritura: regla por fecha + 1 correo por invoice + WARNING retraso
+[.audit/migrate_config_rutas.py]          Migra Config_Rutas.xlsx del cliente al nuevo esquema (preserva valores)
+
 
 ===============================================================================
 3. ESTADO ACTUAL DEL FLUJO
 ===============================================================================
 
-FUNCIONANDO:
-    [x] Bot 29 Precheck: resuelve rutas, lee Config_Rutas
-    [x] Bot 26 1_Crear_Carpetas: estructura Año > Semana, detecta Excel semanal
-    [x] Bot 30 2_Embarques: lee Excel, filtra RIVERSIDE, escribe al Registro
-    [x] Auto-deteccion de OneDrive por USERNAME
+TODOS LOS BOTS PARCHADOS (pendiente test end-to-end en Rocketbot):
+    [x] Bot 29 Precheck: template Config_Rutas actualizado + subcarpetas correos + Registro anio auto
+    [x] Bot 26 1_Crear_Carpetas: solo semana actual (no 52)
+    [x] Bot 30 2_Embarques: Python puro, Registro parametrizado, notificacion nuevos (plantilla #1)
+    [x] Bot 13 3_Lectura_de_COAS_e_Informe: gate COMPLETO, ORGANICO/PISCO, PDF sin T&C, plantillas #2/#3
+    [x] Bot 12 4_Envio_Invoice: regla por fecha, 1 correo por invoice, plantilla #4
+    [x] Bot 32 Orquestador: logging completo con Inicio del flujo + "Iniciando X" + OMITIDOs
 
-PENDIENTES DE IMPLEMENTACION (ver seccion 4):
-    [ ] Bot 13 3_Lectura_de_COAS_e_Informe: cambio de fuente (ORGANICO / PISCO)
-    [ ] Bot 12 4_Envio_Invoice: nueva logica por fecha + retraso
+PRUEBA END-TO-END PENDIENTE:
+    [ ] Abrir Rocketbot, apuntar a robot.db del repo
+    [ ] Validar que Config_Rutas.xlsx del cliente tenga todos los campos
+    [ ] Correr orquestador con pruebas.txt = semana conocida
+    [ ] Verificar log central, Registro Coordinacion escrito, correos enviados
+    [ ] Validar plantilla #5 (pendientes del mes anterior) - aun no implementada
 
 
 ===============================================================================
