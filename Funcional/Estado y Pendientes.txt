@@ -1,177 +1,335 @@
 ===============================================================================
 ESTADO DEL PROYECTO - Bot RPA MPF (SAN ISIDRO)
-Fecha: 2026-04-22
+Ultima actualizacion: 2026-04-22 (post reunion con Karla Alcantara)
 ===============================================================================
+
+Reglas duras de Rocketbot, convenciones y nomenclatura:
+  -> "Guia de Trabajo Rocketbot.txt"
+Spec funcional original:
+  -> "Doc. Funcional corregido.docx"
+
 
 ===============================================================================
 1. ARQUITECTURA ACTUAL
 ===============================================================================
 
-Orquestador: Bot 27 (0_Flujo_Regular) SAN ISIDRO
-    |-- CMD00  [execScriptPython] Auto-deteccion OneDrive por USERNAME
+Orquestador: Bot 32 (0_Flujo_Regular) - version mas reciente
+    |-- CMD00  Auto-deteccion OneDrive por USERNAME (hardvar + fallback)
     |-- CMD01  Inicializar timestamp del orquestador
     |-- CMD03  [execRocketBotDB "0_1_Verificacion_Condiciones"]   -> Bot 29
     |-- CMD06  Escribir precheck en log
     |-- CMD08  [execRocketBotDB "1_Crear_Carpetas"]                -> Bot 26
-    |-- CMD10  Escribir resultado Crear_Carpetas en log
+    |-- CMD10  Escribir resultado H1 en log
     |-- CMD11  [execRocketBotDB "2_Embarques"]                     -> Bot 30
     |-- CMD12  [evaluateIf] si hay data -> continua con hijos 3 y 4
     |       |-- [execRocketBotDB "3_Lectura_de_COAS_e_Informe"]    -> Bot 13
     |       |-- [execRocketBotDB "4_Envio_Invoice"]                -> Bot 12
-    |-- CMD19  Calcular duracion y cerrar log
+    |-- CMD18-20  Cerrar log y registrar resumen
+
+Cadencia: externa via Programador de Tareas de Windows (no hay cron interno).
 
 Paths resueltos por bot 29 (Precheck):
-    ROOT_ONEDRIVE     = C:\Users\{USERNAME}\OneDrive - mpf.com.pe (auto-detectado)
+    ROOT_ONEDRIVE     = C:\Users\{USERNAME}\OneDrive - mpf.com.pe
+                        (hardvareado v_root_onedrive, fallback USERNAME)
     ROOT_EMBARQUES    = {ROOT_ONEDRIVE}\SAN ISIDRO - PROGRAMACION SEMANAL DE EMBARQUES
     ROOT_RIVERSIDE    = {ROOT_ONEDRIVE}\SAN ISIDRO - RIVERSIDE NATURAL FOODS, LTD
+    ROOT_COAS_FUENTE  = {ROOT_ONEDRIVE}\Archivos de Juliana Legua - ORGANICO   [NUEVO]
+    ROOT_INFORMES     = {ROOT_ONEDRIVE}\PISCO - {ANIO_ISO}                     [NUEVO]
+                        (Config guarda prefijo "PISCO - " y el bot concatena)
     BOT_ROOT          = {ROOT_EMBARQUES}\0. Bot
     RUTA_SEMANA       = {ROOT_EMBARQUES}\{YEAR}\Semana {N}
     Config_Rutas.xlsx = {BOT_ROOT}\Rutas\Config_Rutas.xlsx
 
-Config_Rutas.xlsx (hojas):
-    BASE:             ROOT_EMBARQUES, ROOT_RIVERSIDE (ROOT_ONEDRIVE ya no se usa, es hardvar)
-    SUBRUTAS_BOT:     BOT_ROOT, BOT_LOGS, BOT_RUTAS, BOT_CORREOS, BOT_PRUEBAS, BOT_TEMP, BOT_EVIDENCIAS
-    SUBRUTAS_NEGOCIO: CARPETA_COORDINACION_EMBARQUES, CARPETA_COAS, CARPETA_INFORMES, CARPETA_INVOICE
-    CREDENCIALES:     SMTP_HOST, SMTP_PORT, SMTP_USER/PASS, MICROSOFT_USER/PASS, URL_CERTIFICADOS/INFORMES/INVOICE
+Config_Rutas.xlsx (hojas vigentes):
+    BASE:
+        ROOT_EMBARQUES
+        ROOT_RIVERSIDE
+        ROOT_COAS_FUENTE            [agregar]
+        ROOT_INFORMES_PREFIJO       [agregar, valor "PISCO - "]
+    SUBRUTAS_BOT:
+        BOT_ROOT, BOT_LOGS, BOT_RUTAS, BOT_CORREOS, BOT_PRUEBAS, BOT_TEMP,
+        BOT_EVIDENCIAS
+    SUBRUTAS_NEGOCIO:
+        CARPETA_COORDINACION_EMBARQUES    (subcarpeta donde vive el Registro)
+        NOMBRE_REGISTRO_PREFIJO           [agregar, valor
+                                           "Registro de COAS e informes completos "]
+        PAGINA_EXCLUIR_INFORMES           [agregar, valor
+                                           "TERMINOS Y CONDICIONES DE LOS SERVICIOS"]
+    CREDENCIALES:
+        SMTP_HOST, SMTP_PORT, SMTP_SSL, SMTP_USER, SMTP_PASS
+
+Eliminadas de Config (ya no se usan, se ejecutan parches de limpieza):
+    URL_CERTIFICADOS, URL_INFORMES, URL_INVOICE   (ya no hay scraping)
+    MICROSOFT_USER, MICROSOFT_PASS                 (ya no hay login web)
+    IMAP_HOST, IMAP_PORT, IMAP_SSL                 (no se leen correos entrantes)
 
 
 ===============================================================================
 2. FIXES APLICADOS (commits recientes en branch "Claude")
 ===============================================================================
 
-[f4ff230] Fix: convert all setVar+GetVar() to execScriptPython (138 commandos, 18 bots)
-   Razon: comandos tipo setVar con GetVar() fallan silenciosamente -> "ERROR_NOT_VAR"
-
-[3a513f1] Remove pypdf warning / auto-detect OneDrive / drop ROOT_ONEDRIVE from Excel
-   - Bot 13 usa fitz (PyMuPDF) del modulo PDF de Rocketbot, pypdf obsoleto
-   - Bot 27 CMD00 ahora auto-detecta OneDrive por USERNAME
-   - ROOT_ONEDRIVE sale del template de Config_Rutas.xlsx (se usa hardvar)
-
-[ff36bd4] Add detailed path-debug logging to bots 26, 29, 30
-   - Precheck log ahora incluye ROOT_RIVERSIDE, ANIO, NOMBRE_SEMANA, RUTA_SEMANA_ESPERADA
-
-[c0c9751] Debug: dump all path vars + dir listing into v_h1_detalle / log
-   - Bot 26 CMD12 y Bot 30 CMD06 listan todos los archivos del directorio
-   - Debug info ahora llega via v_h1_detalle al log del orquestador
-
-[bdbbd47] *** FIX RAIZ: Rocketbot non-module vars reset to ERROR_NOT_VAR ***
-   HALLAZGO CRITICO: en Rocketbot, las variables que NO estan declaradas en el
-   modulo del bot hijo se REINICIAN a 'ERROR_NOT_VAR' entre cada execScriptPython.
-   Solo las variables del modulo persisten entre comandos.
-
-   Fixes:
-   - Bot 26 modulo: agregadas v_root_embarques, v_anio_semana,
-     v_numero_semana_trabajo, v_nombre_semana, v_ruta_semana
-   - Bot 30 modulo: mismas 5 variables agregadas
-   - Bot 26 CMD00: auto-contenido (detecta OneDrive + lee Config_Rutas.xlsx)
-   - Bot 26 CMD08: auto-contenido (detecta semana desde pruebas.txt o ISO)
-   - Bot 30 CMD00 / CMD01: mismos auto-contenidos
-
-===============================================================================
-3. REGLAS APRENDIDAS DE ROCKETBOT
-===============================================================================
-
-REGLA 1: setVar con GetVar() NO funciona
-    [setVar] v_x = GetVar("a") + "\\" + GetVar("b")   -> FALLA, deja v_x='ERROR_NOT_VAR'
-    Usar siempre execScriptPython: SetVar('v_x', os.path.join(GetVar('a'), GetVar('b')))
-
-REGLA 2: Variables entre bots hijos NO se heredan
-    execRocketBotDB crea un scope donde GetVar("v_x") devuelve 'ERROR_NOT_VAR'
-    para cualquier variable no declarada en el MODULO del bot hijo.
-
-REGLA 3: Variables no-modulo se pierden entre comandos
-    Dentro de un mismo bot, si haces SetVar('v_x', 'algo') en un execScriptPython
-    y v_x no esta en el modulo del bot, el SIGUIENTE comando ve 'ERROR_NOT_VAR'.
-    Las variables del modulo persisten; las no-modulo se reinician.
-
-REGLA 4: GetVar para undefined retorna 'ERROR_NOT_VAR' (no '' ni None)
-    Validar siempre: if valor and valor != 'ERROR_NOT_VAR':
-
-REGLA 5: execRocketBotDB busca bots por NOMBRE
-    Hay multiples bots con el mismo nombre (1_Crear_Carpetas: IDs 7,11,14,15,19,22,26)
-    Rocketbot resuelve por nombre. Bot 26 es el SAN ISIDRO confirmado.
+[f4ff230] Fix: convert all setVar+GetVar() to execScriptPython (138 comandos, 18 bots)
+[3a513f1] Remove pypdf / auto-detect OneDrive / drop ROOT_ONEDRIVE del Excel
+[ff36bd4] Add detailed path-debug logging a bots 26, 29, 30
+[c0c9751] Debug: dump path vars + dir listing en v_h1_detalle / log
+[bdbbd47] *** FIX RAIZ: vars no-modulo se reinician a ERROR_NOT_VAR ***
+          + auto-contenido en bots 26 y 30 (CMD00/01/08)
 
 
 ===============================================================================
-4. ESTADO ACTUAL DEL FLUJO
+3. ESTADO ACTUAL DEL FLUJO
 ===============================================================================
 
 FUNCIONANDO:
-    [x] Bot 29 Precheck: resuelve todas las rutas, lee Config_Rutas, crea Envios.xlsx
-    [x] Bot 26 1_Crear_Carpetas: crea estructura Anio > Semana, busca Excel de embarques
-    [x] Bot 30 2_Embarques: lee Excel de embarques, identifica filas RIVERSIDE
-    [x] Auto-deteccion de OneDrive por USERNAME en cualquier maquina
+    [x] Bot 29 Precheck: resuelve rutas, lee Config_Rutas
+    [x] Bot 26 1_Crear_Carpetas: estructura Año > Semana, detecta Excel semanal
+    [x] Bot 30 2_Embarques: lee Excel, filtra RIVERSIDE, escribe al Registro
+    [x] Auto-deteccion de OneDrive por USERNAME
 
-POR PROBAR EN FLUJO COMPLETO:
-    [ ] Bot 13 3_Lectura_de_COAS_e_Informe: ya migrado a fitz (pendiente test real)
-    [ ] Bot 12 4_Envio_Invoice: no revisado en esta sesion
-
-
-===============================================================================
-5. CAMBIOS REQUERIDOS SEGUN NUEVAS ESPECIFICACIONES
-===============================================================================
-
-CONTEXTO ADICIONAL DEL CLIENTE (sesion 2026-04-22):
-
-A. ARCHIVO COAS / REGISTRO COORDINACION
-   - Ubicacion propuesta: {ROOT_EMBARQUES}\COORDINACION DE EMBARQUES\Registro Coordinacion.xlsx
-     (archivo maestro anual con 12 hojas mensuales ENE-DIC)
-   - NO es solo lectura: tiene ciclo de vida mixto
-     1. BOT ESCRIBE: cuando detecta embarques nuevos en el Excel semanal,
-        agrega filas al registro (Cliente, Embarque, Fecha, N de pedido)
-     2. CLIENTE LLENA MANUALMENTE: columnas COAS / Informes con "COMPLETO"
-     3. BOT LEE: solo procesa embarques marcados "COMPLETO"
-   - Hoja a usar: segun mes del lunes de la semana ISO (v_mes_semana ya existe)
-
-B. CREACION DE CARPETAS - CAMBIO DE COMPORTAMIENTO
-   Actual: bot 26 CMD07 crea TODAS las 52 semanas del anio
-   Requerido: crear SOLO la semana que entra en proceso
-   Pendiente confirmar: crear tambien la siguiente? mantener las anteriores?
-
-C. SEPARACION DE PROCESOS
-   Actual: bot 27 ejecuta COAS (bot 13) e Invoice (bot 12) secuencialmente
-   Requerido: dos procesos INDEPENDIENTES con triggers y notificaciones distintas
-
-   Proceso COAS:
-       Trigger: por confirmar (viernes? cuando cliente sube Excel?)
-       Notificacion fin proceso: destinatarios y formato propios
-
-   Proceso Invoice:
-       Trigger: por confirmar
-       Notificacion fin proceso: destinatarios y formato propios
-
-D. NOTIFICACION DE EMBARQUES NUEVOS
-   Si en una corrida aparecen embarques que no estaban en el registro ->
-   enviar email con la lista actualizada para la semana.
-
-E. ARCHIVOS SAP DURANTE LA SEMANA
-   Cliente sube otros archivos (descargados de SAP) durante la semana en la
-   carpeta semanal. Pendiente definir:
-   - El bot debe detectarlos y procesarlos? O solo los ignora?
-   - Calidad los usa para cargar los documentos que luego marcan "COMPLETO"?
+PENDIENTES DE IMPLEMENTACION (ver seccion 4):
+    [ ] Bot 13 3_Lectura_de_COAS_e_Informe: cambio de fuente (ORGANICO / PISCO)
+    [ ] Bot 12 4_Envio_Invoice: nueva logica por fecha + retraso
 
 
 ===============================================================================
-6. PREGUNTAS ABIERTAS PARA EL CLIENTE (antes de seguir implementando)
+4. PENDIENTES POR BOT
 ===============================================================================
 
-1. Registro Coordinacion: un solo archivo maestro? o "Registro Coordinacion 2026.xlsx"
-   nuevo cada anio?
+--- BOT 29 (0_1_Verificacion_Condiciones) ---------------------------------
+[ ] Template Config_Rutas: agregar ROOT_COAS_FUENTE, ROOT_INFORMES_PREFIJO,
+    NOMBRE_REGISTRO_PREFIJO, PAGINA_EXCLUIR_INFORMES
+[ ] Template Config_Rutas: eliminar URL_*, MICROSOFT_*, IMAP_*
+[ ] Crear subcarpetas Correos/COAS_e_Informes/ y Correos/Invoice/ con
+    Para.txt, CC.txt, CO.txt si faltan
+[ ] Al inicio, crear archivo del Registro del año si no existe:
+    {ROOT_EMBARQUES}\{CARPETA_COORDINACION_EMBARQUES}\{NOMBRE_REGISTRO_PREFIJO}{AÑO}.xlsx
+    con 12 hojas ENE..DIC, header A1:J1 = Cliente | Embarque | Fecha |
+    N de pedido | COAS | Informes | Estado Invoice | Fecha de envio Invoice |
+    Existencia | Fecha de envio COAs
 
-2. Trigger exacto de cada proceso (COAS / Invoice):
-   - Dia y hora de corrida?
-   - Evento disparador (archivo nuevo, hora fija, manual)?
+--- BOT 26 (1_Crear_Carpetas) ---------------------------------------------
+[ ] CMD07: reemplazar loop de 52 semanas por creacion unica de
+    {ROOT_EMBARQUES}\{AÑO}\{v_nombre_semana}
+[ ] Eliminar no-ops de v_ruta_mes (CMD04, CMD06, CMD10) - legacy Año/Mes/Semana
 
-3. Creacion de carpetas semanales:
-   - Solo la semana actual?
-   - Tambien la siguiente como adelanto?
-   - Que pasa con semanas pasadas sin cerrar?
+--- BOT 30 (2_Embarques) --------------------------------------------------
+[ ] Consolidar deteccion dual buggy (A/B vs C/E) en una sola pasada,
+    clave de duplicado = embarque|pedido
+[ ] Usar ruta final del Registro:
+    {ROOT_EMBARQUES}\{CARPETA_COORDINACION_EMBARQUES}\{NOMBRE_REGISTRO_PREFIJO}{AÑO}.xlsx
+[ ] Escribir solo columnas A-D (Cliente, Embarque, Fecha, N de pedido);
+    dejar E-J vacias (las llenan cliente o bots posteriores)
+[ ] Al detectar embarques nuevos -> enviar correo con la lista actualizada
+    (destinatarios desde Correos/COAS_e_Informes/)
 
-4. Deteccion de embarques nuevos: comparar Excel semanal vs Registro Coordinacion
-   del mes -> los faltantes van a la notificacion. Confirmar?
+--- BOT 13 (3_Lectura_de_COAS_e_Informe) ---------------------------------
+[ ] Gate COMPLETO: procesar fila solo si E=COMPLETO Y F=COMPLETO
+[ ] Buscar COAS en {ROOT_ONEDRIVE}\{ROOT_COAS_FUENTE}\ , match por
+    "nombre contiene {embarque}"
+[ ] Buscar Informes en {ROOT_ONEDRIVE}\{ROOT_INFORMES_PREFIJO}{v_anio_semana}\ ,
+    mismo criterio
+[ ] Columna I "Existencia": escribir el resultado de la busqueda
+        OK                       (ambos encontrados)
+        COAS_NO_ENCONTRADO
+        INFORMES_NO_ENCONTRADO
+        AMBOS_NO_ENCONTRADOS
+[ ] Si Existencia != OK -> enviar correo "Documentos no encontrados"
+    (plantilla #2, seccion 6) y NO continuar con el envio de este embarque
+[ ] Si Existencia == OK -> consolidar PDFs en carpeta Temp. Al unir,
+    omitir paginas cuyo texto contenga PAGINA_EXCLUIR_INFORMES
+[ ] Enviar correo (plantilla #3), destinatarios desde
+    Correos/COAS_e_Informes/
+[ ] Tras envio OK, escribir J = fecha_envio_coas (hoy dd/mm/yyyy)
+    Senal de "enviado" = columna J no vacia (no hay columna estado_coas)
+[ ] ELIMINAR toda la logica de scraping / login web (no aplica mas)
 
-5. Archivos de SAP: el bot los detecta/procesa o quedan como referencia para
-   que Calidad los consulte al marcar COMPLETO?
+--- BOT 12 (4_Envio_Invoice) ----------------------------------------------
+Regla de envio (por cada fila del Registro, todos los meses):
+    si H (fecha_envio_invoice) no vacia     -> saltar (ya enviado)
+    si C (fecha_embarque) > hoy              -> saltar (futuro)
+    si (hoy - C) == 1 dia                    -> enviar normal
+    si (hoy - C) > 1 dia                     -> enviar igual,
+                                                loguear WARNING con retraso
+
+[ ] Implementar la regla anterior recorriendo todas las hojas del año
+[ ] Busqueda de archivo: {ROOT_RIVERSIDE}\{embarque}\*invoice*
+    Nomenclatura aceptada:
+        {embarque} invoice                (invoice solitario)
+        {embarque} invoice PO {pedido}    (cuando hay varios PO)
+    Ignorar otros nombres (inbox, etc.)
+[ ] Un correo por cada archivo invoice encontrado (plantilla #4),
+    sea solitario o por PO; NO consolidar en un solo correo
+[ ] Destinatarios desde Correos/Invoice/
+    (Para: mcinvoicecapture@concursolutions.com)
+[ ] Tras envio OK, escribir G=ENVIADO y H=fecha_envio_invoice (hoy)
+[ ] Si retraso > 1 dia: escribir al log central
+    HH:MM:SS|4_Envio_Invoice|WARNING INVOICE_ATRASADO
+        embarque={X} dias_retraso={N}
+
+
+===============================================================================
+5. REGISTRO COORDINACION - LAYOUT DEFINITIVO
+===============================================================================
+
+Archivo: {ROOT_EMBARQUES}\{CARPETA_COORDINACION_EMBARQUES}\
+         {NOMBRE_REGISTRO_PREFIJO}{AÑO}.xlsx
+Hojas:   12 (ENE, FEB, MAR, ABR, MAY, JUN, JUL, AGO, SEP, OCT, NOV, DIC)
+Header por hoja (fila 1):
+
+    Col | Header                    | Escribe         | Lee
+    ----|---------------------------|-----------------|------------------
+    A   | Cliente                   | Bot 30          | -
+    B   | Embarque                  | Bot 30          | Bot 12, Bot 13
+    C   | Fecha                     | Bot 30          | Bot 12 (regla envio)
+    D   | N de pedido               | Bot 30          | Bot 12 (nombre PO)
+    E   | COAS                      | Cliente manual  | Bot 13 (gate)
+    F   | Informes                  | Cliente manual  | Bot 13 (gate)
+    G   | Estado Invoice            | Bot 12          | -
+    H   | Fecha de envio Invoice    | Bot 12          | Bot 12 (no reproc.)
+    I   | Existencia                | Bot 13          | -
+    J   | Fecha de envio COAs       | Bot 13          | Bot 13 (no reproc.)
+
+Valores de columna I (Existencia), escritos por Bot 13 tras pasar el gate
+COMPLETO:
+    OK                       ambos encontrados
+    COAS_NO_ENCONTRADO       solo falta COAS
+    INFORMES_NO_ENCONTRADO   solo falta Informes
+    AMBOS_NO_ENCONTRADOS     no se encontro ninguno
+Si I != OK, se envia la plantilla #2 y no se procesa la fila.
+
+Hoja de destino = abreviatura del mes del lunes de la semana ISO.
+
+
+===============================================================================
+6. PLANTILLAS DE CORREO  (borradores iniciales, pendiente validacion final)
+===============================================================================
+
+Convenciones:
+  - Texto plano, encoding UTF-8.
+  - Placeholders entre llaves {nombre_var} se reemplazan en runtime.
+  - Firma estandar al final: "Bot COMEX MPF".
+  - Para destinatarios: Correos/<subcarpeta>/{Para|CC|CO}.txt
+    (bot 30 y bot 13 -> COAS_e_Informes/   bot 12 -> Invoice/).
+
+------------------------------------------------------------------------------
+#1  EMBARQUES NUEVOS EN EL REGISTRO         Disparador: Bot 30
+------------------------------------------------------------------------------
+Subcarpeta destinatarios: Correos/COAS_e_Informes/
+
+Asunto: COMEX | Nuevos embarques RIVERSIDE - {nombre_semana}
+
+Estimados,
+
+Se registraron los siguientes embarques nuevos de RIVERSIDE NATURAL
+FOODS, LTD. correspondientes a la {nombre_semana} de {anio}:
+
+{lista_embarques}
+  (una linea por embarque con formato:
+     - Embarque {embarque} | PO {pedido} | Fecha {fecha})
+
+Por favor, marcar "COMPLETO" en las columnas COAS e Informes del
+Registro de Coordinacion una vez que los documentos esten disponibles.
+
+Saludos,
+Bot COMEX MPF
+
+------------------------------------------------------------------------------
+#2  DOCUMENTOS NO ENCONTRADOS TRAS COMPLETO   Disparador: Bot 13
+------------------------------------------------------------------------------
+Subcarpeta destinatarios: Correos/COAS_e_Informes/
+
+Asunto: COMEX | Documentos no encontrados - Embarque {embarque}
+
+Estimados,
+
+El embarque {embarque} (Cliente {cliente}, PO {pedido}) fue marcado
+como COMPLETO en el Registro de Coordinacion, pero no se encontraron
+los archivos correspondientes en las rutas configuradas.
+
+Resultado de la busqueda:
+  - COAS     : {estado_coas_busqueda}
+    Ruta     : {ruta_coas_fuente}
+  - Informes : {estado_informes_busqueda}
+    Ruta     : {ruta_informes_fuente}
+
+Criterio de busqueda: archivos cuyo nombre contenga "{embarque}".
+Favor verificar la existencia y nomenclatura de los archivos.
+
+Saludos,
+Bot COMEX MPF
+
+------------------------------------------------------------------------------
+#3  ENVIO COAS + INFORMES (PDF CONSOLIDADO)   Disparador: Bot 13
+------------------------------------------------------------------------------
+Subcarpeta destinatarios: Correos/COAS_e_Informes/
+Adjunto: PDF consolidado en carpeta Temp
+
+Asunto: COMEX | COAs e Informes - Embarque {embarque}
+
+Estimados,
+
+Se adjunta el documento consolidado de COAs e Informes correspondiente
+al embarque {embarque} de {cliente} (PO {pedido}).
+
+Saludos cordiales,
+Bot COMEX MPF
+
+------------------------------------------------------------------------------
+#4  ENVIO INVOICE (1 CORREO POR ARCHIVO)      Disparador: Bot 12
+------------------------------------------------------------------------------
+Subcarpeta destinatarios: Correos/Invoice/
+Para default: mcinvoicecapture@concursolutions.com
+Adjunto: PDF del invoice encontrado
+
+Regla: un correo por cada archivo invoice encontrado, sea solitario
+o por PO.
+
+Asunto (solitario):  COMEX | Invoice - Embarque {embarque}
+Asunto (por PO):     COMEX | Invoice - Embarque {embarque} - PO {pedido}
+
+Cuerpo:
+
+Estimados,
+
+Se adjunta el Invoice correspondiente al embarque {embarque} de
+{cliente}{bloque_po}.
+
+Saludos cordiales,
+Bot COMEX MPF
+
+Donde {bloque_po} se reemplaza por:
+  - vacio, si el invoice es solitario.
+  - " (PO {pedido})", si es por PO.
+
+------------------------------------------------------------------------------
+#5  PENDIENTES DEL MES ANTERIOR               Disparador: Bot 32 (o hijo nuevo)
+------------------------------------------------------------------------------
+Subcarpeta destinatarios: Correos/COAS_e_Informes/
+Cadencia: una vez al cambio de mes (Task Scheduler externo).
+
+Asunto: COMEX | Pendientes del mes anterior - {mes_anterior} {anio}
+
+Estimados,
+
+Al cierre del mes de {mes_anterior} {anio}, los siguientes embarques
+quedaron sin envio completo:
+
+COAs e Informes pendientes:
+{lista_coas_pendientes}
+  (formato:
+     - Embarque {embarque} | PO {pedido} | Fecha {fecha} | Cliente {cliente}
+     | Existencia {existencia})
+
+Invoice pendientes:
+{lista_invoice_pendientes}
+  (formato:
+     - Embarque {embarque} | PO {pedido} | Fecha {fecha}
+     | Dias desde embarque {dias})
+
+Favor revisar para regularizar.
+
+Saludos,
+Bot COMEX MPF
 
 
 ===============================================================================
@@ -183,10 +341,13 @@ Branch:     Claude
 DB:         robot.db  (SQLite, todos los bots codificados en base64/JSON)
 
 Carpeta Funcional/:
-    Doc. Funcional corregido.docx       (spec original del cliente)
-    Pasted text.txt                     (transcripcion texto del doc funcional)
-    Ejemplo de archivo de embarque.xlsx (input semanal del cliente)
-    Ejemplo de archivo COAS.xlsx        (Registro Coordinacion, ver punto 5.A)
+    Doc. Funcional corregido.docx           (spec original del cliente)
+    Guia de Trabajo Rocketbot.txt           (reglas duras, convenciones,
+                                             nomenclatura, metodologia)
+    Estado y Pendientes.txt                 (este archivo)
+    Llamada con Karla Alcantara.docx        (transcripcion reunion 2026-04-22)
+    Ejemplo de archivo de embarque.xlsx     (input semanal del cliente)
+    Ejemplo de archivo COAS.xlsx            (layout del Registro Coordinacion)
 
 Carpeta .audit/ (gitignored, scripts de parcheo):
     patch_bot26_30_selfcontained.py     (ultimo fix, auto-contenidos)
@@ -202,15 +363,36 @@ Logs del bot (en maquina cliente):
 
 
 ===============================================================================
-8. COMO SEGUIR EN LA OTRA PC
+8. PROXIMOS PASOS SUGERIDOS
 ===============================================================================
 
-1. git pull origin Claude (asegurar que tienes los ultimos commits)
-2. Abrir Rocketbot apuntando a robot.db del repo
-3. Confirmar respuestas a preguntas de seccion 6 antes de codificar
-4. Proximos pasos sugeridos:
-   a) Modificar bot 26 CMD07 para crear solo semana actual (no las 52)
-   b) Disenar escritura al Registro Coordinacion (bot 30 o un bot nuevo)
-   c) Separar orquestadores: uno para COAS, otro para Invoice
-   d) Implementar notificacion de embarques nuevos
+Orden propuesto de parches (cada uno deja un patch_*.py en .audit/):
+
+    1. patch_bot29_config_template.py
+       - Agregar ROOT_COAS_FUENTE, ROOT_INFORMES_PREFIJO,
+         NOMBRE_REGISTRO_PREFIJO, PAGINA_EXCLUIR_INFORMES al template
+       - Eliminar URL_*, MICROSOFT_*, IMAP_* del template
+       - Crear subcarpetas Correos/COAS_e_Informes y Correos/Invoice
+       - Crear archivo de Registro del año con 12 hojas si falta
+
+    2. patch_bot26_semana_actual.py
+       - CMD07: solo la semana de trabajo, no las 52
+       - Eliminar no-ops de v_ruta_mes
+
+    3. patch_bot30_registro_coordinacion.py
+       - Consolidar pasada unica por clave embarque|pedido
+       - Ruta y nombre del Registro parametrizados desde Config
+       - Notificacion de embarques nuevos
+
+    4. patch_bot13_coas_informes.py
+       - Gate COMPLETO
+       - Nuevas fuentes ORGANICO / PISCO
+       - Exclusion de pagina Terminos y Condiciones
+       - Escritura de columna J
+       - Limpieza de scraping
+
+    5. patch_bot12_invoice_fecha.py
+       - Regla de envio por fecha con warning de retraso
+       - Un correo por PO
+       - Escritura de columnas G, H
 ===============================================================================
