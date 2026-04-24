@@ -32,15 +32,35 @@ REGLA 1: setVar + GetVar() NO funciona
         import os
         SetVar('v_x', os.path.join(GetVar('a'), GetVar('b')))
 
-REGLA 2: Variables padre -> hijo solo viajan si estan declaradas en AMBOS
-    Para que una variable del padre llegue al hijo via execRocketBotDB,
-    debe estar declarada en la seccion de variables (modulo) TANTO del
-    padre COMO del hijo. Si el hijo no la tiene declarada, GetVar("v_x")
-    devuelve 'ERROR_NOT_VAR' aunque el padre la haya seteado.
+REGLA 2: La propagacion padre -> hijo NO FUNCIONA via runtime SetVar
+    Testeado empiricamente: aunque el padre haga SetVar('v_x', 'nuevo')
+    antes de execRocketBotDB, el hijo SIEMPRE arranca con su propio
+    hardvar. El valor runtime del padre NO sobrescribe el hardvar del
+    hijo.
 
-    Consecuencia practica: toda variable que deba cruzar de padre a hijo
-    se declara en los dos bots. Si una variable es interna del hijo, se
-    declara solo en el hijo.
+    Lo que SI funciona:
+      (a) Child -> parent: si el hijo hace SetVar('v_x', ...) y la var
+          esta declarada en ambos modulos (padre + hijo) con hardvar
+          no-vacio en ambos, al terminar el hijo el valor se propaga
+          al padre.
+      (b) Parent -> child: NO pasa automaticamente. El hijo usa su
+          hardvar como valor inicial, sin importar lo que el padre
+          haya seteado.
+
+    Consecuencia practica para despliegue en otra PC:
+      - Las vars user-specific (v_root_onedrive con path absoluto)
+        deben tener el HARDVAR actualizado manualmente en cada bot
+        que las use. NO basta con setearlas desde un paso 0 del padre.
+      - Alternativa: cada bot hijo auto-detecta por su cuenta (ej.
+        expanduser('~') + 'OneDrive - ...' al inicio de su primer paso)
+        y hace SetVar local. Asi el hardvar solo necesita ser no-vacio.
+      - Los intercambios hijo->padre (estados, resultados, detalles)
+        SI funcionan via SetVar + declaracion en ambos modulos.
+
+    En este proyecto: v_root_onedrive tiene el path real en los 6 bots
+    (no placeholder), y paso 0 de bot 32 agrega auto-deteccion como
+    red de seguridad (aunque no propaga, valida que el path exista
+    y lo actualiza en bot 32).
 
 REGLA 3: Variables no-modulo se pierden entre comandos
     Dentro de un mismo bot, si haces SetVar('v_x', 'algo') en un
@@ -62,6 +82,80 @@ REGLA 5: execRocketBotDB resuelve por NOMBRE, no por ID
     aparece con IDs 7, 11, 14, 15, 19, 22, 26), Rocketbot elige por
     nombre. En este repo, los IDs validados del flujo SAN ISIDRO estan
     documentados en "Estado y Pendientes.txt" seccion 1.
+
+REGLA 6: Las funciones NO ven variables/constantes a nivel modulo
+    En Rocketbot, cada execScriptPython se ejecuta con exec(code,
+    globals, locals) donde ambos dicts son DIFERENTES. Consecuencia:
+    un def al top-level del script se guarda en locals, pero cuando
+    esa funcion se invoca, su __globals__ apunta a globals (que NO
+    tiene las constantes/helpers definidos al top-level).
+
+    EJEMPLOS que NO funcionan:
+        PROCESO = "mi_bot"
+        def _log(msg):
+            f.write("|" + PROCESO + "|" + msg)  # NameError: PROCESO
+            # falla SILENCIOSAMENTE si hay try/except alrededor
+
+        def _resolver(): ...
+        def _log(msg):
+            rp = _resolver()  # NameError: _resolver no visible
+
+    FIX:
+      (a) Hardcodear los literales dentro de la funcion:
+            def _log(msg):
+                f.write("|2_Embarques|" + msg)
+      (b) Inlinear el helper dentro del caller (no definir _resolver
+          aparte; poner su logica adentro de _log).
+      (c) Pasar como argumento: def _log(msg, proceso): ...
+
+REGLA 7: Los imports multi-nombre solo persisten el primero
+    `from datetime import datetime, date, timedelta`
+    al top-level del script hace que SOLO `datetime` sea visible dentro
+    de funciones. `date` y `timedelta` desaparecen para el scope de la
+    funcion (otro efecto del globals/locals separados).
+
+    FIX: importar lo que necesites DENTRO de cada funcion:
+        def f():
+            from datetime import date, timedelta
+            ...
+
+REGLA 8: NO usar def main() wrapper
+    El patron clasico `def main(): ...; main()` falla en Rocketbot por
+    las reglas 6 y 7 combinadas: main() no puede llamar a otros helpers
+    top-level ni ver constantes.
+
+    FIX: poner TODO el flujo principal al top-level del script. Usar
+    if/else para early exits en vez de return. Los helpers top-level
+    funcionan siempre que no llamen a otros helpers top-level.
+
+REGLA 9: Rocketbot cachea los bots al abrirlos
+    Abrir un bot en la UI carga el codigo y las variables en memoria.
+    Modificar robot.db desde fuera (patches, git pull) NO recarga los
+    bots abiertos. Incluso cerrar la pestana del bot puede no ser
+    suficiente.
+
+    FIX: cerrar Rocketbot COMPLETAMENTE (Task Manager si hace falta,
+    matar Rocketbot.exe + python.exe asociados) y reabrir. Ademas,
+    NO tocar "Guardar" en la UI despues de un patch externo sin antes
+    releer desde DB, porque Guardar sobrescribe la DB con lo que
+    Rocketbot tiene en memoria (= la version vieja).
+
+REGLA 10: Rocketbot necesita permisos de escritura en su install dir
+    Al ejecutar un bot, Rocketbot intenta crear/escribir en:
+        C:\Program Files (x86)\Rocketbot\robots\<nombre_bot>\
+        C:\Program Files (x86)\Rocketbot\logs\<fecha>\
+        C:\Program Files (x86)\Rocketbot\files.db  (recientes)
+    Si no tiene permisos, falla con PermissionError opaco.
+
+    FIX (elegir una):
+      (a) Run Rocketbot as Administrator una vez, para que cree esas
+          carpetas; luego corre normal.
+      (b) Dar permisos Modificar al grupo Users sobre
+          C:\Program Files (x86)\Rocketbot\ (una vez, via Properties
+          -> Security).
+      (c) Cambiar el shortcut "Start in" a una carpeta del perfil
+          (p.ej. C:\Users\<user>\rocketbot_work\) -- parcial, no
+          cubre files.db interno.
 
 
 ===============================================================================
