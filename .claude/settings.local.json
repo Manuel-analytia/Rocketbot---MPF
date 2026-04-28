@@ -41,7 +41,10 @@
       "Bash(python3 .audit/patch_bot27_onedrive_autodetect.py)",
       "Bash(python3 .audit/patch_debug_logging.py)",
       "Bash(python3 .audit/patch_debug_h1detalle.py)",
-      "Bash(python3 .audit/patch_bot26_30_selfcontained.py)"
+      "Bash(python3 .audit/patch_bot26_30_selfcontained.py)",
+      "Bash(mkdir -p .audit)",
+      "Bash(python3 .audit/patch_bot13_riverside_carpeta.py)",
+      "Bash(python3 .audit/patch_bot13_temp_cleanup.py)"
     ]
   }
 }
