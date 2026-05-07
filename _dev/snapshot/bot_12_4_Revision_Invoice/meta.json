@@ -1,0 +1,329 @@
+{
+  "bot_id": 12,
+  "name": "4_Revision_Invoice",
+  "vars": [
+    {
+      "name": "v_ruta_base",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_root_onedrive",
+      "data": "C:\\Users\\manue\\OneDrive - mpf.com.pe",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "C:\\Users\\manue\\OneDrive - mpf.com.pe",
+      "disabled": false
+    },
+    {
+      "name": "v_root_embarques",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_root_riverside",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_ruta_registro_coordinacion",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_anio_semana",
+      "data": "2026",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "2026",
+      "disabled": false
+    },
+    {
+      "name": "v_numero_semana_trabajo",
+      "data": "16",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "16",
+      "disabled": false
+    },
+    {
+      "name": "v_nombre_semana",
+      "data": "",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "",
+      "disabled": false
+    },
+    {
+      "name": "v_ruta_correos_invoice",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_smtp_host",
+      "data": "smtp.office365.com",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "smtp.office365.com",
+      "disabled": false
+    },
+    {
+      "name": "v_smtp_port",
+      "data": "587",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "587",
+      "disabled": false
+    },
+    {
+      "name": "v_smtp_user",
+      "data": "_SMTP_USER_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_SMTP_USER_",
+      "disabled": false
+    },
+    {
+      "name": "v_smtp_pass",
+      "data": "_SMTP_PASS_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_SMTP_PASS_",
+      "disabled": false
+    },
+    {
+      "name": "v_smtp_ssl",
+      "data": "false",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "false",
+      "disabled": false
+    },
+    {
+      "name": "v_ruta_log_actual",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_orq_log_path",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_estado",
+      "data": "PENDIENTE",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "PENDIENTE",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_detalle",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_bot_root",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_carpeta_coordinacion_embarques",
+      "data": "COORDINACION DE EMBARQUES",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "COORDINACION DE EMBARQUES",
+      "disabled": false
+    },
+    {
+      "name": "v_ruta_excel",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_email_pending",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_email_subject",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_email_body",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_email_to",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_email_cc",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_email_bcc",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_config_result",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_h4_send_result",
+      "data": "-",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "-",
+      "disabled": false
+    },
+    {
+      "name": "v_ruta_correos_estatus",
+      "data": "_RUNTIME_",
+      "type": "string",
+      "category": "",
+      "status": "0",
+      "constant": false,
+      "defaultValue": "_RUNTIME_",
+      "disabled": false
+    }
+  ],
+  "commands": [
+    {
+      "father": "execScriptPython",
+      "command": "__FILE__:cmd_00.py",
+      "stop_onerror": false,
+      "run_onerror": false,
+      "stop_robot_onerror": false,
+      "run_onerror_robot": "",
+      "run_when": "True",
+      "id": "0270a87b-5ea6-417c-be1e-1fa694063d88",
+      "group": "scripts",
+      "mode_live": false,
+      "execute": 2,
+      "index": 0,
+      "execute_debugg": 0,
+      "img": "",
+      "screenshot": "",
+      "description": "Envia Invoice por fecha (hoy>=fecha+1), uno por archivo; marca G/H en Registro",
+      "message": "",
+      "time": "0.0",
+      "extra": []
+    }
+  ]
+}

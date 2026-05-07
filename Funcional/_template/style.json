@@ -1,0 +1,61 @@
+{
+  "$comment": "Paleta y tipografia corporativa MACHU PICCHU foods, extraida de 'Doc. Funcional corregido.docx'. Hex en uppercase. Tamaños en pt. Margenes en pulgadas.",
+
+  "brand": {
+    "name": "Machu Picchu Foods",
+    "logo": "logo.png",
+    "developer_name": "Analytia",
+    "developer_logo": "logo_analytia.png"
+  },
+
+  "colors": {
+    "brown_primary":   "#584525",
+    "olive_primary":   "#A2AC67",
+    "green_accent":    "#4EA72E",
+    "cream_bg":        "#E6E3C7",
+    "white":           "#FFFFFF",
+    "black_text":      "#000000",
+    "$theme_accent6":  "#4EA72E"
+  },
+
+  "typography": {
+    "font_family": "Garamond",
+    "size_body_pt": 11,
+    "size_heading_pt": 14,
+    "size_title_pt": 26,
+    "size_subtitle_pt": 16,
+    "line_spacing": 1.5
+  },
+
+  "page": {
+    "size": "A4",
+    "width_in": 8.27,
+    "height_in": 11.69,
+    "margin_top_in": 0.98,
+    "margin_bottom_in": 0.98,
+    "margin_left_in": 1.18,
+    "margin_right_in": 1.18
+  },
+
+  "cover": {
+    "logo_max_width_in": 2.5,
+    "title_color": "brown_primary",
+    "subtitle_color": "olive_primary",
+    "title_size_pt": 24,
+    "subtitle_size_pt": 14
+  },
+
+  "headings": {
+    "h1_color": "brown_primary",
+    "h1_size_pt": 18,
+    "h2_color": "olive_primary",
+    "h2_size_pt": 14,
+    "h3_color": "black_text",
+    "h3_size_pt": 12
+  },
+
+  "footer": {
+    "developer_logo_width_in": 0.7,
+    "show_page_number": true
+  }
+}

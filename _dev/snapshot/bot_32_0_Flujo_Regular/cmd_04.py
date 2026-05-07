@@ -1,0 +1,1 @@
+SetVar('v_orq_estado_0_1', GetVar("v_precheck_estado"))

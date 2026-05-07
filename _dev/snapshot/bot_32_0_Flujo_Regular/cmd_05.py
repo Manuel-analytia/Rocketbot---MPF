@@ -1,0 +1,1 @@
+SetVar('v_orq_log_path', GetVar("v_ruta_log_actual"))
