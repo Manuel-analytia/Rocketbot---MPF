@@ -16,7 +16,7 @@ REM ============================================================================
 
 REM ===== CONFIG (unico bloque editable) =======================================
 set ROCKETBOT_DIR=C:\Program Files (x86)\Rocketbot
-set ROCKETBOT_EXE=RocketbotStudio.exe
+set ROCKETBOT_EXE=rocketbot.exe
 set ROBOT_NAME=0_Flujo_Regular
 set CLI_FLAG=--robot
 set SYNC_WAIT_SEC=120

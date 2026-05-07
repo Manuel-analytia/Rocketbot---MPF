@@ -78,10 +78,10 @@ def main() -> None:
     db.code('')
     db.code('REM 3. Ejecutar el orquestador en Rocketbot')
     db.code('cd /d "C:\\Program Files (x86)\\Rocketbot"')
-    db.code('start "" /WAIT "RocketbotStudio.exe" <FLAG_CLI_ROCKETBOT_2025> "0_Flujo_Regular"')
+    db.code('start "" /WAIT "rocketbot.exe" <FLAG_CLI_ROCKETBOT_2025> "0_Flujo_Regular"')
     db.code('exit /b 0')
     db.p('El placeholder <FLAG_CLI_ROCKETBOT_2025> se reemplaza al instalar; '
-         'verificar con RocketbotStudio.exe --help cuál es el flag correcto en '
+         'verificar con rocketbot.exe --help cuál es el flag correcto en '
          'la versión 2025 (puede ser --robot, -r o --bot). Si la red del '
          'servidor es lenta, subir el timeout de 120 a 240 segundos.')
 

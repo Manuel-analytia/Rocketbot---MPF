@@ -53,7 +53,12 @@
       "Bash(cd \"c:\\\\Repositorios\\\\MPF - Rocketbot\\\\Rocketbot---MPF\" && mkdir -p _dev/lib _dev/snapshot Funcional/_template && ls _dev/ Funcional/_template/)",
       "Bash(python3 _dev/lib/dbtools.py list)",
       "Bash(python3 _dev/lib/dbtools.py cmds 32)",
-      "Bash(python3 _dev/snapshot/generate.py)"
+      "Bash(python3 _dev/snapshot/generate.py)",
+      "Read(//c/Program Files \\(x86\\)/Rocketbot/**)",
+      "Read(//c/Program Files \\(x86\\)/Rocketbot//**)",
+      "Read(//c/Users/User_PC/Documents/**)",
+      "Read(//c/Users/User_PC//**)",
+      "WebFetch(domain:forum.rocketbot.com)"
     ],
     "additionalDirectories": [
       "c:\\Repositorios\\MPF - Rocketbot\\Rocketbot---MPF\\_dev"
