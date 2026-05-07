@@ -1,2 +1,10 @@
 .audit/
 .claude/
+
+# Artefactos temporales del template (extraidos de docx para inspeccion)
+Funcional/_template/_extracted_media/
+Funcional/_template/_demo.docx
+
+# Archivos generados de Office al editar/abrir
+~$*.docx
+~$*.xlsx
