@@ -54,12 +54,21 @@ def main() -> None:
     db.h1('2. Instalación')
 
     db.h2('2.1 Importar el bot a Rocketbot Studio')
+    db.p('Requisito previo: la cuenta del bot debe tener una Licencia de Producción '
+         'activa en esta instalación de Rocketbot. Sin ella, el CLI -start= no '
+         'funciona y la corrida queda bloqueada con el mensaje "Does not have a '
+         'production license" en consola.')
     db.p('Instalar Rocketbot Studio versión 2025 en el servidor. Antes de '
          'abrirlo por primera vez, copiar el archivo robot.db entregado por el '
-         'equipo de RPA a la carpeta donde Rocketbot guarda sus proyectos '
-         '(típicamente en %APPDATA%\\Rocketbot), reemplazando el robot.db por '
-         'defecto.')
-    db.p('Abrir Rocketbot Studio y verificar que aparezcan los seis robots del '
+         'equipo de RPA a la carpeta de instalación de Rocketbot (por defecto '
+         'C:\\Program Files (x86)\\Rocketbot\\robot.db), reemplazando el archivo '
+         'que viene con la instalación.')
+    db.p('Abrir Rocketbot Studio una primera vez con permisos de administrador. '
+         'Si aparece el aviso de actualización de drivers, aceptar y dejar que '
+         'termine; esto evita que el popup interrumpa las corridas posteriores '
+         'desatendidas. Luego activar la Licencia de Producción si aún no está '
+         'aplicada en esta máquina.')
+    db.p('Verificar en Rocketbot Studio que aparezcan los seis robots del '
          'proyecto: 0_Flujo_Regular (orquestador), 0_1_Verificacion_Condiciones, '
          '1_Crear_Carpetas, 2_Embarques, 3_Revision_COAS_Informe y '
          '4_Revision_Invoice.')
@@ -78,12 +87,11 @@ def main() -> None:
     db.code('')
     db.code('REM 3. Ejecutar el orquestador en Rocketbot')
     db.code('cd /d "C:\\Program Files (x86)\\Rocketbot"')
-    db.code('start "" /WAIT "rocketbot.exe" <FLAG_CLI_ROCKETBOT_2025> "0_Flujo_Regular"')
+    db.code('start "" /WAIT "rocketbot.exe" -start=0_Flujo_Regular')
     db.code('exit /b 0')
-    db.p('El placeholder <FLAG_CLI_ROCKETBOT_2025> se reemplaza al instalar; '
-         'verificar con rocketbot.exe --help cuál es el flag correcto en '
-         'la versión 2025 (puede ser --robot, -r o --bot). Si la red del '
-         'servidor es lenta, subir el timeout de 120 a 240 segundos.')
+    db.p('Si la red del servidor es lenta, subir el timeout de 120 a 240 '
+         'segundos para que OneDrive tenga tiempo de sincronizar el Excel '
+         'semanal antes de invocar al orquestador.')
 
     db.h2('2.3 Crear la tarea programada')
     db.p('Desde el Programador de Tareas de Windows (taskschd.msc), crear una '
@@ -93,11 +101,12 @@ def main() -> None:
         rows=[
             ['Nombre',                       'Bot COMEX MPF'],
             ['Cuenta de ejecución',          'Cuenta del bot (la misma que sincroniza OneDrive)'],
-            ['Privilegios',                  'Ejecutar con los privilegios más altos'],
+            ['Privilegios',                  'Desmarcar "Ejecutar con privilegios más altos" (recomendación oficial de Rocketbot ante errores de módulo o licencia)'],
             ['Cuándo ejecutar',              'Tanto si el usuario inició sesión como si no'],
             ['Desencadenador',               'Diario, repetir cada un día'],
             ['Hora de inicio',               '07:00 (sugerencia; ajustar según necesidad)'],
-            ['Acción',                       'Iniciar un programa: C:\\Scripts\\bot_comex.bat'],
+            ['Acción - Programa',            'C:\\Scripts\\bot_comex.bat'],
+            ['Acción - Iniciar en',          'C:\\Program Files (x86)\\Rocketbot  (importante: sin esto Rocketbot falla al ubicar sus recursos)'],
             ['Argumentos',                   '(ninguno)'],
             ['Si el equipo no está en CA',   'Permitir ejecutar igualmente'],
             ['Si la tarea se atrasa',        'Ejecutar cuanto antes'],
@@ -141,9 +150,12 @@ def main() -> None:
     db.table(
         headers=['Síntoma', 'Causa probable', 'Qué revisar'],
         rows=[
+            ['Consola dice "Does not have a production license"',
+             'Licencia de Producción no activada en esta máquina',
+             'Activar la licencia desde Rocketbot Studio (Menú > Licencia) con la cuenta del bot'],
             ['La tarea no se ejecuta',
-             'Permisos de la cuenta del bot',
-             'secpol.msc > Asignación de derechos > "Iniciar sesión como tarea por lotes"'],
+             'Permisos de la cuenta del bot, o "Iniciar en" mal configurado',
+             'secpol.msc > Asignación de derechos > "Iniciar sesión como tarea por lotes". Y verificar que "Iniciar en" apunte a la carpeta de Rocketbot'],
             ['Log dice RUTA_SEMANA_INVALIDA o ERROR_NOT_VAR',
              'OneDrive desincronizado',
              'Marcar las cuatro carpetas como "Disponibles en este dispositivo"'],

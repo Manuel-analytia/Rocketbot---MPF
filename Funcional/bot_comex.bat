@@ -18,7 +18,7 @@ REM ===== CONFIG (unico bloque editable) =======================================
 set ROCKETBOT_DIR=C:\Program Files (x86)\Rocketbot
 set ROCKETBOT_EXE=rocketbot.exe
 set ROBOT_NAME=0_Flujo_Regular
-set CLI_FLAG=--robot
+set CLI_FLAG=-start=
 set SYNC_WAIT_SEC=120
 set BAT_LOG_DIR=C:\Scripts\logs
 REM ============================================================================
@@ -54,7 +54,7 @@ if not exist "%ROCKETBOT_DIR%\%ROCKETBOT_EXE%" (
 REM ===== 4. Ejecutar Rocketbot ================================================
 echo [%TIME%] Ejecutando: %ROCKETBOT_EXE% %CLI_FLAG% "%ROBOT_NAME%" >> "%BAT_LOG%"
 cd /d "%ROCKETBOT_DIR%"
-start "" /WAIT "%ROCKETBOT_EXE%" %CLI_FLAG% "%ROBOT_NAME%"
+start "" /WAIT "%ROCKETBOT_EXE%" %CLI_FLAG%%ROBOT_NAME%
 set RB_EXIT=%ERRORLEVEL%
 
 echo [%TIME%] Rocketbot termino con exit code %RB_EXIT% >> "%BAT_LOG%"

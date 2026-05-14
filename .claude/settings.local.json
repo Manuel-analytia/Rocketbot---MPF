@@ -58,7 +58,8 @@
       "Read(//c/Program Files \\(x86\\)/Rocketbot//**)",
       "Read(//c/Users/User_PC/Documents/**)",
       "Read(//c/Users/User_PC//**)",
-      "WebFetch(domain:forum.rocketbot.com)"
+      "WebFetch(domain:forum.rocketbot.com)",
+      "Bash(python3 .audit/patch_bot32_heartbeat.py)"
     ],
     "additionalDirectories": [
       "c:\\Repositorios\\MPF - Rocketbot\\Rocketbot---MPF\\_dev"

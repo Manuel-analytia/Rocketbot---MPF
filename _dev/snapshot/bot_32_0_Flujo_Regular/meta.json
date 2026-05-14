@@ -1383,6 +1383,29 @@
       "time": "0.0",
       "extra": [],
       "disabled": false
+    },
+    {
+      "father": "execScriptPython",
+      "command": "__FILE__:cmd_10.py",
+      "var": "",
+      "description": "Heartbeat: notificar a Estatus que el orquestador termino",
+      "run_when": "True",
+      "id": "9d888d32-80fa-45e8-be96-cb85f9bdadae",
+      "group": "scripts",
+      "mode_live": false,
+      "execute": 2,
+      "index": 0,
+      "execute_debugg": 0,
+      "img": "",
+      "screenshot": "",
+      "stop_onerror": false,
+      "run_onerror": false,
+      "stop_robot_onerror": false,
+      "run_onerror_robot": "",
+      "message": "",
+      "time": "0.0",
+      "extra": [],
+      "disabled": false
     }
   ]
 }
